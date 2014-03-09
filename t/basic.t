@@ -4,12 +4,13 @@ use warnings;
 use Data::Transform::WithMetadata qw(encode decode);
 
 use Scalar::Util;
-use Test::More tests => 19;
+use Test::More tests => 21;
 
 test_scalar();
 test_simple_references();
 test_filehandle();
 test_coderef();
+test_refref();
 
 sub test_scalar {
     my $tester = sub {
@@ -91,4 +92,24 @@ sub test_coderef {
 
     my $decoded = decode($encoded);
     is(ref($decoded), 'CODE', 'decoded to a coderef');
+}
+
+sub test_refref {
+    my $hash = { };
+    my $original = \$hash;
+
+    my $expected = {
+        __reftype => 'REF',
+        __refaddr => Scalar::Util::refaddr($original),
+        __value => {
+            __reftype => 'HASH',
+            __refaddr => Scalar::Util::refaddr($hash),
+            __value => { }
+        }
+    };
+    my $encoded = encode($original);
+    is_deeply($encoded, $expected, 'encode ref reference');
+
+    my $decoded = decode($encoded);
+    is_deeply($decoded, $original, 'decode ref reference');
 }

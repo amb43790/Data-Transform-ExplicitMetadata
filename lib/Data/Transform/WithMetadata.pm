@@ -155,8 +155,11 @@ sub decode {
     } elsif ($reftype eq 'CODE') {
         $rv = \&_dummy_sub;
 
-    }
+    } elsif ($reftype eq 'REF') {
+        my $ref = decode($value);
+        $rv = \$ref;
 
+    }
 
     return $rv;
 }
@@ -187,6 +190,8 @@ sub _validate_decode_structure {
                 ( $reftype eq 'GLOB' and exists($value->{SCALAR}))
                 or
                 ( $reftype eq 'CODE' and $value and ref($value) eq '' )
+                or
+                ( $reftype eq 'REF' and ref($value) eq 'HASH' and exists($value->{__reftype}) )
             );
     $compatible_references or Carp::croak('Invalid decode data: __reftype is '
                         . $input->{__reftype}
