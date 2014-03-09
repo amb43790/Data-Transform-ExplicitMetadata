@@ -4,7 +4,7 @@ use warnings;
 use Data::Transform::WithMetadata qw(encode decode);
 
 use Scalar::Util;
-use Test::More tests => 28;
+use Test::More tests => 34;
 
 test_scalar();
 test_simple_references();
@@ -12,6 +12,7 @@ test_filehandle();
 test_coderef();
 test_refref();
 test_regex();
+test_vstring();
 
 sub test_scalar {
     my $tester = sub {
@@ -153,3 +154,28 @@ sub test_regex {
     isa_ok($decoded, 'Regexp');
 }
 
+sub test_vstring {
+    my $original = v1.2.3.4;
+
+    my $expected = {
+        __reftype => 'VSTRING',
+        __value => [ 1, 2, 3, 4 ],
+    };
+    my $encoded = encode($original);
+    is_deeply($encoded, $expected, 'encode vstring');
+
+    my $decoded = decode($encoded);
+    is($decoded, $original, 'decode vstring');
+    is(ref(\$decoded), 'VSTRING', 'ref to decoded is a VSTRING');
+
+
+    my $vstring = v1.2.3.4;
+    $original = \$vstring;
+    $expected->{__refaddr} = Scalar::Util::refaddr($original);
+    $encoded = encode($original);
+    is_deeply($encoded, $expected, 'encode vstring ref');
+
+    $decoded = decode($encoded);
+    is($$decoded, $$original, 'decode vstring ref');
+    is(ref($decoded), 'VSTRING', 'decoded is a VSTRING');
+}

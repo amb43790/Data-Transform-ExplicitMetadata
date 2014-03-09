@@ -169,6 +169,10 @@ sub decode {
         my($options,$regex) = $value =~ m/^\(\?(\w*)-.*?:(.*)\)$/;
         $rv = eval "qr($regex)$options";
 
+    } elsif ($reftype eq 'VSTRING') {
+        my $vstring = eval 'v' . join('.', @$value);
+        $rv = $refaddr ? \$vstring : $vstring;
+
     }
 
     return $rv;
