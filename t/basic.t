@@ -4,13 +4,14 @@ use warnings;
 use Data::Transform::WithMetadata qw(encode decode);
 
 use Scalar::Util;
-use Test::More tests => 21;
+use Test::More tests => 24;
 
 test_scalar();
 test_simple_references();
 test_filehandle();
 test_coderef();
 test_refref();
+test_regex();
 
 sub test_scalar {
     my $tester = sub {
@@ -58,7 +59,7 @@ sub test_filehandle {
     my $decoded = decode($encoded);
 
     ok(delete $encoded->{__value}->{SCALAR}->{__refaddr},
-        'anoymous scalar has __refaddr');
+        'anonymous scalar has __refaddr');
 
     my $expected = {
         __value => {
@@ -112,4 +113,20 @@ sub test_refref {
 
     my $decoded = decode($encoded);
     is_deeply($decoded, $original, 'decode ref reference');
+}
+
+sub test_regex {
+    my $original = qr(a regex \w)m;
+
+    my $expected = {
+        __reftype => 'REGEXP',
+        __refaddr => Scalar::Util::refaddr($original),
+        __value => "$original",
+    };
+    my $encoded = encode($original);
+    is_deeply($encoded, $expected, 'encode regex');
+
+    my $decoded = decode($encoded);
+    is("$decoded", "$original", 'decode regex');
+    isa_ok($decoded, 'Regexp');
 }

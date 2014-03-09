@@ -83,6 +83,8 @@ sub encode {
         } elsif (($reftype eq 'REGEXP')
                     or ($reftype eq 'SCALAR' and defined($blesstype) and $blesstype eq 'Regexp')
         ) {
+            $reftype = 'REGEXP';
+            undef($blesstype) unless $blesstype ne 'Regexp';
             $value = $value . '';
         } elsif ($reftype eq 'CODE') {
             (my $copy = $value.'') =~ s/^(\w+)\=//;  # Hack to change CodeClass=CODE(0x123) to CODE=(0x123)
@@ -159,6 +161,10 @@ sub decode {
         my $ref = decode($value);
         $rv = \$ref;
 
+    } elsif ($reftype eq 'REGEXP') {
+        my($options,$regex) = $value =~ m/^\(\?(\w*)-.*?:(.*)\)$/;
+        $rv = eval "qr($regex)$options";
+
     }
 
     return $rv;
@@ -192,6 +198,8 @@ sub _validate_decode_structure {
                 ( $reftype eq 'CODE' and $value and ref($value) eq '' )
                 or
                 ( $reftype eq 'REF' and ref($value) eq 'HASH' and exists($value->{__reftype}) )
+                or
+                ( $reftype eq 'REGEXP' and $value and ref($value) eq '' )
             );
     $compatible_references or Carp::croak('Invalid decode data: __reftype is '
                         . $input->{__reftype}
