@@ -4,10 +4,11 @@ use warnings;
 use Data::Transform::WithMetadata qw(encode decode);
 
 use Scalar::Util;
-use Test::More tests => 14;
+use Test::More tests => 17;
 
 test_scalar();
 test_simple_references();
+test_filehandle();
 
 sub test_scalar {
     my $tester = sub {
@@ -46,5 +47,31 @@ sub test_simple_references {
         my $decoded = decode($encoded);
         is_deeply($decoded, $original, "decode $test");
     }
+}
+
+sub test_filehandle {
+    open(my $filehandle, __FILE__) || die "Can't open file: $!";
+
+    my $encoded = encode($filehandle);
+    my $decoded = decode($encoded);
+
+    ok(delete $encoded->{__value}->{SCALAR}->{__refaddr},
+        'anoymous scalar has __refaddr');
+
+    my $expected = {
+        __value => {
+            IO => fileno($filehandle),
+            SCALAR => {
+                __value => undef,
+                __reftype => 'SCALAR',
+            },
+        },
+        __reftype => 'GLOB',
+        __refaddr => Scalar::Util::refaddr($filehandle),
+    };
+
+    is_deeply($encoded, $expected, 'encode filehandle');
+
+    is(fileno($decoded), fileno($filehandle), 'decode filehandle');
 }
 

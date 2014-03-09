@@ -4,6 +4,7 @@ use strict;
 use warnings;
 
 use Scalar::Util;
+use Symbol;
 use Carp;
 
 use base 'Exporter';
@@ -134,10 +135,30 @@ sub decode {
     } elsif ($reftype eq 'HASH') {
         $rv = { map { $_ => decode($value->{$_}) } keys %$value };
 
+    } elsif ($reftype eq 'GLOB') {
+        $rv = Symbol::gensym();
+
+        foreach my $type ( keys %$value ) {
+            if ($type eq 'IO') {
+                if (my $fileno = $value->{IO}) {
+                    open($rv, '>&=', $fileno)
+                        || Carp::carp("Couldn't open filehandle for descriptor $fileno");
+                }
+            } elsif ($type eq 'CODE') {
+                *{$rv} = \&_dummy_sub;
+
+            } else {
+                *{$rv} = decode($value->{$type});
+            }
+        }
     }
 
 
     return $rv;
+}
+
+sub _dummy_sub {
+    'Put in place by ' . __PACKAGE__ . ' when it could not find the named sub';
 }
 
 sub _validate_decode_structure {
@@ -157,6 +178,8 @@ sub _validate_decode_structure {
             (   ( $input->{__reftype} eq 'SCALAR' and ! ref($input->{__value}) )
                 or
                 ( $input->{__reftype} eq ref($input->{__value}) )
+                or
+                ( $input->{__reftype} eq 'GLOB' and exists($input->{__value}->{SCALAR}))
             );
     $compatible_references or Carp::croak('Invalid decode data: __reftype is '
                         . $input->{__reftype}
