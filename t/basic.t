@@ -4,7 +4,7 @@ use warnings;
 use Data::Transform::WithMetadata qw(encode decode);
 
 use Scalar::Util;
-use Test::More tests => 24;
+use Test::More tests => 28;
 
 test_scalar();
 test_simple_references();
@@ -76,6 +76,28 @@ sub test_filehandle {
     is_deeply($encoded, $expected, 'encode filehandle');
 
     is(fileno($decoded), fileno($filehandle), 'decode filehandle');
+
+
+    # try with a bare filehandle
+    $encoded = encode(*STDOUT);
+    $decoded = decode($encoded);
+
+    ok(delete $encoded->{__value}->{SCALAR}->{__refaddr},
+        'anonymous scalar has __refaddr');
+
+    $expected = {
+        __value => {
+            IO => fileno(STDOUT),
+            SCALAR => {
+                __value => undef,
+                __reftype => 'SCALAR',
+            },
+        },
+        __reftype => 'GLOB',
+    };
+    is_deeply($encoded, $expected, 'encode bare filehandle');
+    is(ref(\$decoded), 'GLOB', 'decoded bare filehandle type');
+    is(fileno($decoded), fileno(STDOUT), 'decode bare filehandle fileno');
 }
 
 sub test_coderef {
@@ -130,3 +152,4 @@ sub test_regex {
     is("$decoded", "$original", 'decode regex');
     isa_ok($decoded, 'Regexp');
 }
+

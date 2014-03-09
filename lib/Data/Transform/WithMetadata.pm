@@ -19,10 +19,14 @@ sub encode {
     if (!ref($value)) {
         my $ref = ref(\$value);
         # perl 5.8 - ref() with a vstring returns SCALAR
-        if ($ref eq 'GLOB' or $ref eq 'VSTRING' or Scalar::Util::isvstring($value)) {
-            my $copy = $value;
-            $value = \$copy;
+        if ($ref eq 'GLOB'
+            or
+            $ref eq 'VSTRING' or Scalar::Util::isvstring($value)
+        ) {
+            $value = encode(\$value, $path_expr, $seen);
+            delete $value->{__refaddr};
         }
+        return $value;
     }
 
     $path_expr ||= '$VAR';
@@ -56,7 +60,7 @@ sub encode {
             my $rv = {  __reftype => $reftype,
                         __refaddr => $refaddr,
                         __tied    => 1,
-                        __value   => encode_perl_data($tied, &$_p, $seen) };
+                        __value   => encode($tied, &$_p, $seen) };
             $rv->{__blessed} = $blesstype if $blesstype;
             return $rv;
         }
@@ -77,8 +81,6 @@ sub encode {
             if (*{$value}{IO}) {
                 $tmpvalue{IO} = encode(fileno(*{$value}{IO}));
             }
-#$tmpvalue{NAME} = *{$value}{NAME};
-#$tmpvalue{PACKAGE} = *{$value}{PACKAGE};
             $value = \%tmpvalue;
         } elsif (($reftype eq 'REGEXP')
                     or ($reftype eq 'SCALAR' and defined($blesstype) and $blesstype eq 'Regexp')
@@ -154,6 +156,8 @@ sub decode {
             }
         }
 
+        $rv = *$rv unless $refaddr;
+
     } elsif ($reftype eq 'CODE') {
         $rv = \&_dummy_sub;
 
@@ -184,10 +188,17 @@ sub _validate_decode_structure {
         or Carp::croak('Invalid decode data: expected key __value');
     exists($input->{__reftype})
         or Carp::croak('Invalid decode data: expected key __reftype');
-    exists($input->{__refaddr})
+
+    my($reftype, $value, $blesstype) = @$input{'__reftype','__value','__blesstype'};
+    $reftype eq 'GLOB'
+        or $reftype eq 'VSTRING'
+        or exists($input->{__refaddr})
         or Carp::croak('Invalid decode data: expected key __refaddr');
 
-    my($reftype, $value) = @$input{'__reftype','__value'};
+    ($blesstype and $reftype)
+        or !$blesstype
+        or Carp::croak('Invalid decode data: Cannot have __blesstype without __reftype');
+
     my $compatible_references =
             (   ( $reftype eq 'SCALAR' and ! ref($value) )
                 or
@@ -200,6 +211,8 @@ sub _validate_decode_structure {
                 ( $reftype eq 'REF' and ref($value) eq 'HASH' and exists($value->{__reftype}) )
                 or
                 ( $reftype eq 'REGEXP' and $value and ref($value) eq '' )
+                or
+                ( $reftype eq 'VSTRING' and ref($value) eq 'ARRAY' )
             );
     $compatible_references or Carp::croak('Invalid decode data: __reftype is '
                         . $input->{__reftype}
