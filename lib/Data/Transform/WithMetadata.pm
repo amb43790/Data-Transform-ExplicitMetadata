@@ -72,14 +72,15 @@ sub encode {
             $value = [ map { encode($value->[$_], &$_p, $seen) } (0 .. $#$value) ];
 
         } elsif ($reftype eq 'GLOB') {
+            local $_ = 'glob';  # &$_p needs this
             my %tmpvalue = map { $_ => encode(*{$value}{$_}, &$_p, $seen) }
                            grep { *{$value}{$_} }
                            qw(HASH ARRAY SCALAR);
             if (*{$value}{CODE}) {
-                $tmpvalue{CODE} = *{$value}{CODE};
+                $tmpvalue{CODE} = encode(*{$value}{CODE}, &$_p, $seen);
             }
             if (*{$value}{IO}) {
-                $tmpvalue{IO} = encode(fileno(*{$value}{IO}));
+                $tmpvalue{IO} = encode(fileno(*{$value}{IO}), &$_p, $seen);
             }
             $value = \%tmpvalue;
         } elsif (($reftype eq 'REGEXP')
