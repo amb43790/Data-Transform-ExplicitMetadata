@@ -4,11 +4,10 @@ use warnings;
 use Data::Transform::WithMetadata qw(encode decode);
 
 use Scalar::Util;
-use Test::More tests => 12;
+use Test::More tests => 14;
 
 test_scalar();
-test_arrayref();
-test_hashref();
+test_simple_references();
 
 sub test_scalar {
     my $tester = sub {
@@ -25,36 +24,27 @@ sub test_scalar {
     $tester->(undef, 'undef');
 }
 
-sub test_arrayref {
-    my $original = [ 1, 2, 3 ];
-    my $encoded = encode($original);
+sub test_simple_references {
+    my %tests = (
+        scalar => \'a scalar',
+        array  => [ 1,2,3 ],
+        hash   => { one => 1, two => 2, string => 'a string' }
+    );
+    foreach my $test ( keys %tests ) {
+        my $original = $tests{$test};
+        my $encoded = encode($original);
 
-    _test_simple_reference($encoded, $original, 'encode arrayref');
+        my $expected = {
+            __value => ref($original) eq 'SCALAR' ? $$original : $original,
+            __reftype => Scalar::Util::reftype($original),
+            __refaddr => Scalar::Util::refaddr($original),
+        };
+        $expected->{__blesstype} = Scalar::Util::blessed($original) if Scalar::Util::blessed($original);
 
-    my $decoded = decode($encoded);
-    is_deeply($decoded, $original, 'decode arrayref');
+        is_deeply($encoded, $expected, "encode $test");
+
+        my $decoded = decode($encoded);
+        is_deeply($decoded, $original, "decode $test");
+    }
 }
 
-sub test_hashref {
-    my $original = { one => 1, two => 2, string => 'a string' };
-    my $encoded = encode($original);
-
-    _test_simple_reference($encoded, $original, 'encode hashref');
-
-    my $decoded = decode($encoded);
-    is_deeply($decoded, $original, 'decode hashref')
-}
-
-sub _test_simple_reference {
-    my($encoded, $original, $desc) = @_;
-
-    my $compare = {
-        __value => $original,
-        __reftype => Scalar::Util::reftype($original),
-        __refaddr => Scalar::Util::refaddr($original),
-    };
-
-    $compare->{__blesstype} = Scalar::Util::blessed($original) if Scalar::Util::blessed($original);
-
-    is_deeply($encoded, $compare, $desc);
-}

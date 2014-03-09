@@ -1,14 +1,16 @@
-package Devel::hdb::App::EncodePerlData;
+package Data::Transform::WithMetadata;
 
 use strict;
 use warnings;
 
 use Scalar::Util;
+use Carp;
 
-use Exporter qw(import);
-our @EXPORT_OK = qw( encode_perl_data );
+use base 'Exporter';
 
-sub encode_perl_data {
+our @EXPORT_OK = qw( encode decode );
+
+sub encode {
     my $value = shift;
     my $path_expr = shift;
     my $seen = shift;
@@ -59,21 +61,23 @@ sub encode_perl_data {
         }
 
         if ($reftype eq 'HASH') {
-            $value = { map { $_ => encode_perl_data($value->{$_}, &$_p, $seen) } keys(%$value) };
+            $value = { map { $_ => encode($value->{$_}, &$_p, $seen) } keys(%$value) };
 
         } elsif ($reftype eq 'ARRAY') {
-            $value = [ map { encode_perl_data($value->[$_], &$_p, $seen) } (0 .. $#$value) ];
+            $value = [ map { encode($value->[$_], &$_p, $seen) } (0 .. $#$value) ];
 
         } elsif ($reftype eq 'GLOB') {
-            my %tmpvalue = map { $_ => encode_perl_data(*{$value}{$_}, &$_p, $seen) }
+            my %tmpvalue = map { $_ => encode(*{$value}{$_}, &$_p, $seen) }
                            grep { *{$value}{$_} }
                            qw(HASH ARRAY SCALAR);
             if (*{$value}{CODE}) {
                 $tmpvalue{CODE} = *{$value}{CODE};
             }
             if (*{$value}{IO}) {
-                $tmpvalue{IO} = encode_perl_data(fileno(*{$value}{IO}));
+                $tmpvalue{IO} = encode(fileno(*{$value}{IO}));
             }
+#$tmpvalue{NAME} = *{$value}{NAME};
+#$tmpvalue{PACKAGE} = *{$value}{PACKAGE};
             $value = \%tmpvalue;
         } elsif (($reftype eq 'REGEXP')
                     or ($reftype eq 'SCALAR' and defined($blesstype) and $blesstype eq 'Regexp')
@@ -83,12 +87,12 @@ sub encode_perl_data {
             (my $copy = $value.'') =~ s/^(\w+)\=//;  # Hack to change CodeClass=CODE(0x123) to CODE=(0x123)
             $value = $copy;
         } elsif ($reftype eq 'REF') {
-            $value = encode_perl_data($$value, &$_p, $seen );
+            $value = encode($$value, &$_p, $seen );
         } elsif (($reftype eq 'VSTRING') or Scalar::Util::isvstring($$value)) {
             $reftype = 'VSTRING';
             $value = [ unpack('c*', $$value) ];
         } elsif ($reftype eq 'SCALAR') {
-            $value = encode_perl_data($$value, &$_p, $seen);
+            $value = encode($$value, &$_p, $seen);
         }
 
         $value = { __reftype => $reftype, __refaddr => $refaddr, __value => $value };
@@ -110,17 +114,68 @@ sub _is_tied {
     return $tied;
 }
 
+sub decode {
+    my($input) = @_;
+
+    unless (ref $input) {
+        return $input;
+    }
+
+    _validate_decode_structure($input);
+
+    my($value, $reftype, $refaddr, $blessed) = @$input{'__value','__reftype','__refaddr','__blesstype'};
+    my $rv;
+    if ($reftype eq 'SCALAR') {
+        $rv = \$value
+
+    } elsif ($reftype eq 'ARRAY') {
+        $rv = [ map { decode($_) } @$value ];
+
+    } elsif ($reftype eq 'HASH') {
+        $rv = { map { $_ => decode($value->{$_}) } keys %$value };
+
+    }
+
+
+    return $rv;
+}
+
+sub _validate_decode_structure {
+    my $input = shift;
+
+    ref($input) eq 'HASH'
+        or Carp::croak('Invalid decode data: expected hashref but got '.ref($input));
+
+    exists($input->{__value})
+        or Carp::croak('Invalid decode data: expected key __value');
+    exists($input->{__reftype})
+        or Carp::croak('Invalid decode data: expected key __reftype');
+    exists($input->{__refaddr})
+        or Carp::croak('Invalid decode data: expected key __refaddr');
+
+    my $compatible_references =
+            (   ( $input->{__reftype} eq 'SCALAR' and ! ref($input->{__value}) )
+                or
+                ( $input->{__reftype} eq ref($input->{__value}) )
+            );
+    $compatible_references or Carp::croak('Invalid decode data: __reftype is '
+                        . $input->{__reftype}
+                        . ' but __value is a '
+                        . ref($input->{__value}));
+    return 1;
+}
+
 1;
 
 =pod
 
 =head1 NAME
 
-Devel::hdb::App::EncodePerlData - Encode Perl values in a -friendly way
+Data::Serialize::JSON - Encode Perl values in a json-friendly way
 
 =head1 SYNOPSIS
 
-  use Devel::hdb::App::EncodePerlData qw(encode_perl_data);
+  use Data::Serialize::JSON qw(to_json from_json);
 
   my $val = encode_perl_data($some_data_structure);
   $io->print( JSON::encode_json( $val ));
