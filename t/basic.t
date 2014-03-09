@@ -4,11 +4,12 @@ use warnings;
 use Data::Transform::WithMetadata qw(encode decode);
 
 use Scalar::Util;
-use Test::More tests => 17;
+use Test::More tests => 19;
 
 test_scalar();
 test_simple_references();
 test_filehandle();
+test_coderef();
 
 sub test_scalar {
     my $tester = sub {
@@ -75,3 +76,19 @@ sub test_filehandle {
     is(fileno($decoded), fileno($filehandle), 'decode filehandle');
 }
 
+sub test_coderef {
+    my $original = sub { 1 };
+
+    my $encoded = encode($original);
+
+    my $expected = {
+        __value => "$original",
+        __reftype => 'CODE',
+        __refaddr => Scalar::Util::refaddr($original),
+    };
+
+    is_deeply($encoded, $expected, 'encode coderef');
+
+    my $decoded = decode($encoded);
+    is(ref($decoded), 'CODE', 'decoded to a coderef');
+}

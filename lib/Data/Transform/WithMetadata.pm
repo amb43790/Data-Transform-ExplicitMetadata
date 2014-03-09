@@ -151,6 +151,10 @@ sub decode {
                 *{$rv} = decode($value->{$type});
             }
         }
+
+    } elsif ($reftype eq 'CODE') {
+        $rv = \&_dummy_sub;
+
     }
 
 
@@ -174,12 +178,15 @@ sub _validate_decode_structure {
     exists($input->{__refaddr})
         or Carp::croak('Invalid decode data: expected key __refaddr');
 
+    my($reftype, $value) = @$input{'__reftype','__value'};
     my $compatible_references =
-            (   ( $input->{__reftype} eq 'SCALAR' and ! ref($input->{__value}) )
+            (   ( $reftype eq 'SCALAR' and ! ref($value) )
                 or
-                ( $input->{__reftype} eq ref($input->{__value}) )
+                ( $reftype eq ref($value) )
                 or
-                ( $input->{__reftype} eq 'GLOB' and exists($input->{__value}->{SCALAR}))
+                ( $reftype eq 'GLOB' and exists($value->{SCALAR}))
+                or
+                ( $reftype eq 'CODE' and $value and ref($value) eq '' )
             );
     $compatible_references or Carp::croak('Invalid decode data: __reftype is '
                         . $input->{__reftype}
