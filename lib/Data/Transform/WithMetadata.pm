@@ -49,7 +49,7 @@ sub encode {
 
         # Build a new path string for recursive calls
         my $_p = sub {
-            return '$'.$path_expr if ($reftype eq 'SCALAR' or $reftype eq 'REF');
+            return join('', '${', $path_expr, '}') if ($reftype eq 'SCALAR' or $reftype eq 'REF');
 
             my @bracket = $reftype eq 'ARRAY' ? ( '[', ']' ) : ( '{', '}' );
             return sprintf('%s->%s%s%s', $path_expr, $bracket[0], $_, $bracket[1]);

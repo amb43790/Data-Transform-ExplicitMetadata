@@ -9,6 +9,7 @@ use Test::More tests => 8;
 recurse_array();
 recurse_hash();
 recurse_ref1();
+recurse_ref2();
 
 sub recurse_array {
     my $idx_2 = [ 2 ];
@@ -109,3 +110,36 @@ sub recurse_ref1 {
     undef($a); # break the cycle
 }
 
+sub recurse_ref2 {
+    my $c = 1;
+    my $b = \$c;
+    $c = \$b;
+    my $a = \$b;
+    my $original = \$a;
+
+    my $expected = {
+        __refaddr => refaddr($original),
+        __reftype => 'REF',
+        __value => {
+            __refaddr => refaddr($a),
+            __reftype => 'REF',
+            __value => {
+                __refaddr => refaddr($b),
+                __reftype => 'REF',
+                __value => {
+                    __refaddr => refaddr($c),
+                    __reftype => 'REF',
+                    __recursive => 1,
+                    __value => '${$VAR}',
+                },
+            }
+        }
+    };
+    my $encoded = encode($original);
+    is_deeply($encoded, $expected, 'encode ref, circularity not at root');
+
+    my $decoded = decode($encoded);
+    is_deeply($decoded, $original, 'decode ref, circularity not at root');
+
+    undef($a);
+}
