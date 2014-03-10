@@ -66,7 +66,7 @@ sub encode {
         }
 
         if ($reftype eq 'HASH') {
-            $value = { map { $_ => encode($value->{$_}, &$_p, $seen) } keys(%$value) };
+            $value = { map { $_ => encode($value->{$_}, &$_p, $seen) } sort(keys %$value) };
 
         } elsif ($reftype eq 'ARRAY') {
             $value = [ map { encode($value->[$_], &$_p, $seen) } (0 .. $#$value) ];
@@ -121,7 +121,7 @@ sub _is_tied {
 }
 
 sub decode {
-    my($input) = @_;
+    my($input, $top_level_data_struct) = @_;
 
     unless (ref $input) {
         return $input;
@@ -131,17 +131,32 @@ sub decode {
 
     my($value, $reftype, $refaddr, $blessed) = @$input{'__value','__reftype','__refaddr','__blesstype'};
     my $rv;
-    if ($reftype eq 'SCALAR') {
-        $rv = \$value
+
+    if ($input->{__recursive}) {
+        print "recursive ",$input->{__value},"\n";
+        my $VAR = $top_level_data_struct;
+        return eval $input->{__value};
+
+    } elsif ($reftype eq 'SCALAR') {
+        $rv = \$value;
 
     } elsif ($reftype eq 'ARRAY') {
-        $rv = [ map { decode($_) } @$value ];
+        $rv = [];
+        $top_level_data_struct ||= $rv;
+        for (my $i = 0; $i < @$value; $i++) {
+            push @$rv, decode($value->[$i], $top_level_data_struct);
+        }
 
     } elsif ($reftype eq 'HASH') {
-        $rv = { map { $_ => decode($value->{$_}) } keys %$value };
+        $rv = {};
+        $top_level_data_struct ||= $rv;
+        foreach my $key ( sort keys %$value ) {
+            $rv->{$key} = decode($value->{$key}, $top_level_data_struct);
+        }
 
     } elsif ($reftype eq 'GLOB') {
         $rv = Symbol::gensym();
+        $top_level_data_struct ||= $rv;
 
         foreach my $type ( keys %$value ) {
             if ($type eq 'IO') {
@@ -153,7 +168,7 @@ sub decode {
                 *{$rv} = \&_dummy_sub;
 
             } else {
-                *{$rv} = decode($value->{$type});
+                *{$rv} = decode($value->{$type}, $top_level_data_struct);
             }
         }
 
@@ -163,7 +178,6 @@ sub decode {
         $rv = \&_dummy_sub;
 
     } elsif ($reftype eq 'REF') {
-        my $ref = decode($value);
         $rv = \$ref;
 
     } elsif ($reftype eq 'REGEXP') {
@@ -218,6 +232,8 @@ sub _validate_decode_structure {
                 ( $reftype eq 'REGEXP' and $value and ref($value) eq '' )
                 or
                 ( $reftype eq 'VSTRING' and ref($value) eq 'ARRAY' )
+                or
+                ( $reftype and ! ref($input->{value}) and $input->{__recursive} )
             );
     $compatible_references or Carp::croak('Invalid decode data: __reftype is '
                         . $input->{__reftype}
