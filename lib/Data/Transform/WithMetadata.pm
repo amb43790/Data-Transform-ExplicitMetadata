@@ -121,7 +121,7 @@ sub _is_tied {
 }
 
 sub decode {
-    my($input, $top_level_data_struct) = @_;
+    my($input, $recursive_queue, $recurse_fill) = @_;
 
     unless (ref $input) {
         return $input;
@@ -131,32 +131,36 @@ sub decode {
 
     my($value, $reftype, $refaddr, $blessed) = @$input{'__value','__reftype','__refaddr','__blesstype'};
     my $rv;
+    my $is_first_invocation = ! $recursive_queue;
+    $recursive_queue ||= [];
 
     if ($input->{__recursive}) {
-        print "recursive ",$input->{__value},"\n";
-        my $VAR = $top_level_data_struct;
-        return eval $input->{__value};
+        my $path = $input->{__value};
+        push @$recursive_queue,
+            sub {
+                my $VAR = shift;
+                $recurse_fill->(eval $path);
+            };
 
     } elsif ($reftype eq 'SCALAR') {
         $rv = \$value;
 
     } elsif ($reftype eq 'ARRAY') {
         $rv = [];
-        $top_level_data_struct ||= $rv;
         for (my $i = 0; $i < @$value; $i++) {
-            push @$rv, decode($value->[$i], $top_level_data_struct);
+            my $idx = $i;
+            push @$rv, decode($value->[$i], $recursive_queue, sub { $rv->[$idx] = shift });
         }
 
     } elsif ($reftype eq 'HASH') {
         $rv = {};
-        $top_level_data_struct ||= $rv;
         foreach my $key ( sort keys %$value ) {
-            $rv->{$key} = decode($value->{$key}, $top_level_data_struct);
+            my $k = $key;
+            $rv->{$key} = decode($value->{$key}, $recursive_queue, sub { $rv->{$k} = shift });
         }
 
     } elsif ($reftype eq 'GLOB') {
         $rv = Symbol::gensym();
-        $top_level_data_struct ||= $rv;
 
         foreach my $type ( keys %$value ) {
             if ($type eq 'IO') {
@@ -168,7 +172,7 @@ sub decode {
                 *{$rv} = \&_dummy_sub;
 
             } else {
-                *{$rv} = decode($value->{$type}, $top_level_data_struct);
+                *{$rv} = decode($value->{$type}, $recursive_queue, sub { *{$rv} = shift });
             }
         }
 
@@ -178,6 +182,8 @@ sub decode {
         $rv = \&_dummy_sub;
 
     } elsif ($reftype eq 'REF') {
+        my $ref;
+        $ref = decode($value, $recursive_queue, sub { $ref = shift });
         $rv = \$ref;
 
     } elsif ($reftype eq 'REGEXP') {
@@ -188,6 +194,10 @@ sub decode {
         my $vstring = eval 'v' . join('.', @$value);
         $rv = $refaddr ? \$vstring : $vstring;
 
+    }
+
+    if ($is_first_invocation) {
+        $_->($rv) foreach @$recursive_queue;
     }
 
     return $rv;
