@@ -131,7 +131,7 @@ sub decode {
 
     _validate_decode_structure($input);
 
-    my($value, $reftype, $refaddr, $blessed) = @$input{'__value','__reftype','__refaddr','__blesstype'};
+    my($value, $reftype, $refaddr, $blessed) = @$input{'__value','__reftype','__refaddr','__blessed'};
     my $rv;
     my $is_first_invocation = ! $recursive_queue;
     $recursive_queue ||= [];
@@ -197,6 +197,8 @@ sub decode {
         $rv = $refaddr ? \$vstring : $vstring;
 
     }
+
+    bless $rv, $blessed if ($blessed);
 
     if ($is_first_invocation) {
         $_->($rv) foreach @$recursive_queue;
