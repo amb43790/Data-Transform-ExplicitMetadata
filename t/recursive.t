@@ -4,12 +4,13 @@ use warnings;
 use Data::Transform::WithMetadata qw(encode decode);
 
 use Scalar::Util qw(refaddr);
-use Test::More tests => 8;
+use Test::More tests => 11;
 
 recurse_array();
 recurse_hash();
 recurse_ref1();
 recurse_ref2();
+recurse_glob();
 
 sub recurse_array {
     my $idx_2 = [ 2 ];
@@ -142,4 +143,42 @@ sub recurse_ref2 {
     is_deeply($decoded, $original, 'decode ref, circularity not at root');
 
     undef($a);
+}
+
+sub recurse_glob {
+    use vars '@typeglob','$typeglob';
+
+    @typeglob = (\@typeglob);
+    my $original = \*typeglob;
+
+    my $expected = {
+        __refaddr => refaddr($original),
+        __reftype => 'GLOB',
+        __value => {
+            ARRAY => {
+                __refaddr => refaddr(\@typeglob),
+                __reftype => 'ARRAY',
+                __value => [
+                    {
+                        __refaddr => refaddr(\@typeglob),
+                        __reftype => 'ARRAY',
+                        __recursive => 1,
+                        __value => '*{$VAR}{ARRAY}'
+                    }
+                ],
+            },
+            SCALAR => {
+                __refaddr => refaddr(\$typeglob),
+                __reftype => 'SCALAR',
+                __value => undef,
+            },
+        },
+    };
+    my $encoded = encode($original);
+    is_deeply($encoded, $expected, 'encode glob');
+
+    my $decoded = decode($encoded);
+    is(ref($decoded), 'GLOB', 'decode glob');
+    my $decoded_array = *{$decoded}{ARRAY};
+    is_deeply($decoded_array, $decoded_array, 'decoded array from glob');
 }

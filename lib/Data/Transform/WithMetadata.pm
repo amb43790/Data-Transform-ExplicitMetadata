@@ -50,6 +50,7 @@ sub encode {
         # Build a new path string for recursive calls
         my $_p = sub {
             return join('', '${', $path_expr, '}') if ($reftype eq 'SCALAR' or $reftype eq 'REF');
+            return join('', '*{', $path_expr, '}') if ($reftype eq 'GLOB');
 
             my @bracket = $reftype eq 'ARRAY' ? ( '[', ']' ) : ( '{', '}' );
             return sprintf('%s->%s%s%s', $path_expr, $bracket[0], $_, $bracket[1]);
@@ -72,8 +73,9 @@ sub encode {
             $value = [ map { encode($value->[$_], &$_p, $seen) } (0 .. $#$value) ];
 
         } elsif ($reftype eq 'GLOB') {
-            local $_ = 'glob';  # &$_p needs this
-            my %tmpvalue = map { $_ => encode(*{$value}{$_}, &$_p, $seen) }
+            my %tmpvalue = map { $_ => encode(*{$value}{$_},
+                                            &$_p."{$_}",
+                                            $seen) }
                            grep { *{$value}{$_} }
                            qw(HASH ARRAY SCALAR);
             if (*{$value}{CODE}) {
