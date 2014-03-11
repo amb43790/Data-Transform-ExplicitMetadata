@@ -166,7 +166,9 @@ sub test_vstring {
 
     my $decoded = decode($encoded);
     is($decoded, $original, 'decode vstring');
-    is(ref(\$decoded), 'VSTRING', 'ref to decoded is a VSTRING');
+    is(ref(\$decoded),
+        $^V ge v5.10.0 ? 'VSTRING' : 'SCALAR',
+        'ref to decoded');
 
 
     my $vstring = v1.2.3.4;
@@ -177,5 +179,7 @@ sub test_vstring {
 
     $decoded = decode($encoded);
     is($$decoded, $$original, 'decode vstring ref');
-    is(ref($decoded), 'VSTRING', 'decoded is a VSTRING');
+    is(ref($decoded),
+        $^V ge v5.10.0 ? 'VSTRING' : 'SCALAR',
+        'decoded ref');
 }

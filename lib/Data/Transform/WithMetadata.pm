@@ -228,7 +228,8 @@ sub decode {
             if ($type eq 'IO') {
                 if (my $fileno = $value->{IO}) {
                     open($rv, '>&=', $fileno)
-                        || Carp::carp("Couldn't open filehandle for descriptor $fileno");
+                    || open($rv, '<&=', $fileno)
+                    || Carp::carp("Couldn't open filehandle for descriptor $fileno: $!");
                 }
             } elsif ($type eq 'CODE') {
                 *{$rv} = \&_dummy_sub;
