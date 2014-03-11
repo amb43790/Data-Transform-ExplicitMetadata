@@ -144,7 +144,7 @@ sub test_regex {
     my $expected = {
         __reftype => 'REGEXP',
         __refaddr => Scalar::Util::refaddr($original),
-        __value => "$original",
+        __value => [ 'a regex \w', 'm' ],
     };
     my $encoded = encode($original);
     is_deeply($encoded, $expected, 'encode regex');

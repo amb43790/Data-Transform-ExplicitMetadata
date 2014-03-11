@@ -90,7 +90,15 @@ sub encode {
         ) {
             $reftype = 'REGEXP';
             undef($blesstype) unless $blesstype ne 'Regexp';
-            $value = $value . '';
+            my($pattern, $modifiers);
+            if ($^V ge v5.9.5) {
+                require re;
+                ($pattern, $modifiers) = re::regexp_pattern($value);
+            } else {
+                $value = "$value";
+                ($modifiers, $pattern) = $value =~ m/\(\?(\w*)-\w*:(.*)\)$/;
+            }
+            $value = [ $pattern, $modifiers ];
         } elsif ($reftype eq 'CODE') {
             (my $copy = $value.'') =~ s/^(\w+)\=//;  # Hack to change CodeClass=CODE(0x123) to CODE=(0x123)
             $value = $copy;
@@ -241,8 +249,8 @@ sub decode {
         $rv = \$ref;
 
     } elsif ($reftype eq 'REGEXP') {
-        my($options,$regex) = $value =~ m/^\(\?(\w*)-.*?:(.*)\)$/;
-        $rv = eval "qr($regex)$options";
+        my($pattern,$modifiers) = @$value[0,1];
+        $rv = eval "qr($pattern)$modifiers";
 
     } elsif ($reftype eq 'VSTRING') {
         my $vstring = eval 'v' . join('.', @$value);
@@ -295,7 +303,7 @@ sub _validate_decode_structure {
                 or
                 ( $reftype eq 'REF' and ref($value) eq 'HASH' and exists($value->{__reftype}) )
                 or
-                ( $reftype eq 'REGEXP' and $value and ref($value) eq '' )
+                ( $reftype eq 'REGEXP' and ref($value) eq 'ARRAY' )
                 or
                 ( $reftype eq 'VSTRING' and ref($value) eq 'ARRAY' )
                 or
@@ -355,7 +363,8 @@ If the reference was not blessed, then the __blessed key will not be present.
 __value is generally a copy of the underlying data.  For example, if the input
 value is an hashref, then __value will also be a hashref containing the input
 value's kays and values.  For typeblobs and glob refs, __value will be a
-hashref with the keys SCALAR, ARRAY, HASH, IO and CODE.  For coderefs,
+hashref with the keys SCALAR, ARRAY, HASH, IO and CODE.  For compiled regexps,
+__value will be a 2-element arrayref of the pattern and modifiers.  For coderefs,
 __value will be the stringified reference, like "CODE=(0x12345678)".  For
 v-strings and v-string refs, __value will by an arrayref containing the
 integers making up the v-string.  For tied objects, __tied will be true

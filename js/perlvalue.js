@@ -216,7 +216,10 @@ PerlValue.REGEXP = function(value) {
 }
 PerlValue.REGEXP.prototype = new PerlValue();
 PerlValue.REGEXP.prototype.renderValue = function(view) {
-    return '<span class="PerlValue">' + this.escapedValue() + '</span>';
+    return '<span class="PerlValue">m/'
+            + this.escapedValue(this.value[0])
+            + '/' + this.escapedValue(this.value[1])
+            + '</span>';
 }
 
 
