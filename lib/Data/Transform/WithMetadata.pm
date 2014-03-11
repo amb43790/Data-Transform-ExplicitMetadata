@@ -122,6 +122,52 @@ sub _is_tied {
     return $tied;
 }
 
+sub _retie {
+    my($ref, $value) = @_;
+
+    my $class = Scalar::Util::blessed($value);
+    no strict 'refs';
+    no warnings 'redefine';
+    if (ref($ref) eq 'SCALAR') {
+        my $tiescalar = join('::',$class, 'TIESCALAR');
+        local *$tiescalar = sub { return $value };
+        tie $$ref, $class;
+
+    } elsif (ref($ref) eq 'ARRAY') {
+        my $tiearray = join('::', $class, 'TIEARRAY');
+        local *$tiearray = sub { return $value };
+        tie @$ref, $class;
+
+    } elsif (ref($ref) eq 'HASH') {
+        my $tiehash = join('::', $class, 'TIEHASH');
+        local *$tiehash = sub { return $value };
+        tie %$ref, $class;
+
+    } elsif (ref($ref) eq 'GLOB') {
+        my $tiehandle = join('::', $class, 'TIEHANDLE');
+        local *$tiehandle = sub { return $value };
+        tie *$ref, $class;
+
+    } else {
+        Carp::croak('Cannot recreate a tied '.scalar(ref $value));
+    }
+}
+
+sub _create_anon_ref_of_type {
+    my($type) = shift;
+
+    if ($type eq 'SCALAR') {
+        my $anon;
+        return \$anon;
+    } elsif ($type eq 'ARRAY') {
+        return [];
+    } elsif ($type eq 'HASH') {
+        return {};
+    } elsif ($type eq 'GLOB') {
+        return Symbol::gensym();
+    }
+}
+
 sub decode {
     my($input, $recursive_queue, $recurse_fill) = @_;
 
@@ -144,6 +190,12 @@ sub decode {
                 $recurse_fill->(eval $path);
             };
 
+    } elsif ($input->{__tied}) {
+        $rv = _create_anon_ref_of_type($reftype);
+        my $tied_value;
+        $tied_value = decode($value, $recursive_queue, sub { $tied_value });
+        _retie($rv, $tied_value);
+
     } elsif ($reftype eq 'SCALAR') {
         $rv = \$value;
 
@@ -162,7 +214,7 @@ sub decode {
         }
 
     } elsif ($reftype eq 'GLOB') {
-        $rv = Symbol::gensym();
+        $rv = _create_anon_ref_of_type('GLOB');
 
         foreach my $type ( keys %$value ) {
             if ($type eq 'IO') {
@@ -247,7 +299,9 @@ sub _validate_decode_structure {
                 or
                 ( $reftype eq 'VSTRING' and ref($value) eq 'ARRAY' )
                 or
-                ( $reftype and ! ref($input->{value}) and $input->{__recursive} )
+                ( $reftype and ! ref($input->{__value}) and $input->{__recursive} )
+                or
+                ( $input->{__tied} and ref($input->{__value}) and $input->{__value}->{__blessed} )
             );
     $compatible_references or Carp::croak('Invalid decode data: __reftype is '
                         . $input->{__reftype}
