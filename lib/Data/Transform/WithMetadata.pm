@@ -136,25 +136,26 @@ sub _is_tied {
 sub _retie {
     my($ref, $value) = @_;
 
+    my $reftype = Scalar::Util::reftype($ref);
     my $class = Scalar::Util::blessed($value);
     no strict 'refs';
     no warnings 'redefine';
-    if (ref($ref) eq 'SCALAR') {
+    if ($reftype eq 'SCALAR') {
         my $tiescalar = join('::',$class, 'TIESCALAR');
         local *$tiescalar = sub { return $value };
         tie $$ref, $class;
 
-    } elsif (ref($ref) eq 'ARRAY') {
+    } elsif ($reftype eq 'ARRAY') {
         my $tiearray = join('::', $class, 'TIEARRAY');
         local *$tiearray = sub { return $value };
         tie @$ref, $class;
 
-    } elsif (ref($ref) eq 'HASH') {
+    } elsif ($reftype eq 'HASH') {
         my $tiehash = join('::', $class, 'TIEHASH');
         local *$tiehash = sub { return $value };
         tie %$ref, $class;
 
-    } elsif (ref($ref) eq 'GLOB') {
+    } elsif ($reftype eq 'GLOB') {
         my $tiehandle = join('::', $class, 'TIEHANDLE');
         local *$tiehandle = sub { return $value };
         tie *$ref, $class;
