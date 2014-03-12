@@ -167,7 +167,7 @@ sub _retie {
 }
 
 sub _create_anon_ref_of_type {
-    my($type) = shift;
+    my($type, $package, $name) = @_;
 
     if ($type eq 'SCALAR') {
         my $anon;
@@ -177,7 +177,19 @@ sub _create_anon_ref_of_type {
     } elsif ($type eq 'HASH') {
         return {};
     } elsif ($type eq 'GLOB') {
-        return Symbol::gensym();
+        my $rv;
+        if ($package and $name
+            and
+            $package ne 'Symbol'
+            and
+            $name !~ m/GEN\d/
+        ) {
+            my $globname = join('::',$package, $name);
+            $rv = do { no strict 'refs'; local *$globname; \*$globname; };
+        } else {
+            $rv = Symbol::gensym();
+        }
+        return $rv;
     }
 }
 
@@ -230,13 +242,7 @@ sub decode {
         my $is_real_glob = ($value->{PACKAGE} ne 'Symbol'
                             and $value->{NAME} !~ m/^GEN\d+/
                             and $value->{NAME} =~ m/^\w/);
-        if ($is_real_glob) {
-            my $glob_name = join('::', $value->{PACKAGE}, $value->{NAME});
-            no strict 'refs';
-            $rv = \*$glob_name;
-        } else {
-            $rv = _create_anon_ref_of_type('GLOB');
-        }
+        $rv = _create_anon_ref_of_type('GLOB', $value->{PACKAGE}, $value->{NAME});
 
         foreach my $type ( keys %$value ) {
             next if ($type eq 'NAME' or $type eq 'PACKAGE' or $type eq 'IOseek');
