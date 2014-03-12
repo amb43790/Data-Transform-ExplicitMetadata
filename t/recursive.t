@@ -155,6 +155,8 @@ sub recurse_glob {
         __refaddr => refaddr($original),
         __reftype => 'GLOB',
         __value => {
+            NAME => 'typeglob',
+            PACKAGE => 'main',
             ARRAY => {
                 __refaddr => refaddr(\@typeglob),
                 __reftype => 'ARRAY',

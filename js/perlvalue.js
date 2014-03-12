@@ -153,7 +153,11 @@ PerlValue.GLOB = function(value) {
     this.value = {};
     var k;
     for (k in value.__value) {
-        if (value.__value.hasOwnProperty(k)) {
+        if (k === 'PACKAGE') {
+            this.pkg = value.__value[k];
+        } else if (k === 'NAME') {
+            this.name = value.__value[k];
+        } else if (value.__value.hasOwnProperty(k)) {
             this.value[k] = PerlValue.parseFromEval(value.__value[k]);
         }
     }
@@ -172,6 +176,7 @@ PerlValue.GLOB.prototype.renderValue = function(view) {
 
     var html = '<dl class="PerlValue">',
         k;
+    html += '<dt><span class="label">Name</span></dt><dd><span><b>' + this.pkg + '</b>::' + this.name + '</span></dd>';
     for (k in this.value) {
         html += '<dt><span class="label label-success">' + k + '</span></dt><dd>'
                 + this.value[k].render(view) + '</dd>';

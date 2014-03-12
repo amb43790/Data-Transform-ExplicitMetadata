@@ -64,6 +64,8 @@ sub test_filehandle {
 
     my $expected = {
         __value => {
+            PACKAGE => 'main',
+            NAME => '$filehandle',
             IO => fileno($filehandle),
             SCALAR => {
                 __value => undef,
@@ -88,6 +90,8 @@ sub test_filehandle {
 
     $expected = {
         __value => {
+            PACKAGE => 'main',
+            NAME => 'STDOUT',
             IO => fileno(STDOUT),
             SCALAR => {
                 __value => undef,

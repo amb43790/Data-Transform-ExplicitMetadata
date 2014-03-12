@@ -78,6 +78,7 @@ sub encode {
                                             $seen) }
                            grep { *{$value}{$_} }
                            qw(HASH ARRAY SCALAR);
+            @tmpvalue{'NAME','PACKAGE'} = (*{$value}{NAME}, *{$value}{PACKAGE});
             if (*{$value}{CODE}) {
                 $tmpvalue{CODE} = encode(*{$value}{CODE}, &$_p, $seen);
             }
@@ -222,9 +223,19 @@ sub decode {
         }
 
     } elsif ($reftype eq 'GLOB') {
-        $rv = _create_anon_ref_of_type('GLOB');
+        my $is_real_glob = ($value->{PACKAGE} ne 'Symbol'
+                            and $value->{NAME} !~ m/^GEN\d+/
+                            and $value->{NAME} =~ m/^\w/);
+        if ($is_real_glob) {
+            my $glob_name = join('::', $value->{PACKAGE}, $value->{NAME});
+            no strict 'refs';
+            $rv = \*$glob_name;
+        } else {
+            $rv = _create_anon_ref_of_type('GLOB');
+        }
 
         foreach my $type ( keys %$value ) {
+            next if ($type eq 'NAME' or $type eq 'PACKAGE');
             if ($type eq 'IO') {
                 if (my $fileno = $value->{IO}) {
                     open($rv, '>&=', $fileno)
@@ -232,7 +243,7 @@ sub decode {
                     || Carp::carp("Couldn't open filehandle for descriptor $fileno: $!");
                 }
             } elsif ($type eq 'CODE') {
-                *{$rv} = \&_dummy_sub;
+                *{$rv} = \&_dummy_sub unless ($is_real_glob);
 
             } else {
                 *{$rv} = decode($value->{$type}, $recursive_queue, sub { *{$rv} = shift });

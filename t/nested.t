@@ -56,6 +56,8 @@ sub test_nested_struct {
                         __reftype => 'GLOB',
                         __refaddr => refaddr($stdoutref),
                         __value => {
+                            NAME => 'STDOUT',
+                            PACKAGE => 'main',
                             IO => fileno(STDOUT),
                             SCALAR => {
                                 __reftype => 'SCALAR',
@@ -70,6 +72,8 @@ sub test_nested_struct {
                 __refaddr => refaddr($globref),
                 __reftype => 'GLOB',
                 __value => {
+                    NAME => 'overloaded_glob',
+                    PACKAGE => 'main',
                     SCALAR => {
                         __reftype => 'SCALAR',
                         __refaddr => refaddr(\$overloaded_glob),
