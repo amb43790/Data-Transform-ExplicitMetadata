@@ -56,7 +56,7 @@ sub encode {
             return sprintf('%s->%s%s%s', $path_expr, $bracket[0], $_, $bracket[1]);
         };
 
-        if (my $tied = _is_tied($value, $reftype)) {
+        if (my $tied = _is_tied($value)) {
             local $_ = 'tied';  # &$_p needs this
             my $rv = {  __reftype => $reftype,
                         __refaddr => $refaddr,
@@ -121,8 +121,9 @@ sub encode {
 }
 
 sub _is_tied {
-    my($ref, $reftype) = @_;
+    my $ref = shift;
 
+    my $reftype = Scalar::Util::reftype($ref);
     my $tied;
     if    ($reftype eq 'HASH')   { $tied = tied %$ref }
     elsif ($reftype eq 'ARRAY')  { $tied = tied @$ref }
