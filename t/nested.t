@@ -59,6 +59,7 @@ sub test_nested_struct {
                             NAME => 'STDOUT',
                             PACKAGE => 'main',
                             IO => fileno(STDOUT),
+                            IOseek => undef,
                             SCALAR => {
                                 __reftype => 'SCALAR',
                                 __value => undef,

@@ -157,6 +157,8 @@ PerlValue.GLOB = function(value) {
             this.pkg = value.__value[k];
         } else if (k === 'NAME') {
             this.name = value.__value[k];
+        } else if (k === 'IOseek') {
+            this.ioseek = value.__value[k];
         } else if (value.__value.hasOwnProperty(k)) {
             this.value[k] = PerlValue.parseFromEval(value.__value[k]);
         }
@@ -178,8 +180,10 @@ PerlValue.GLOB.prototype.renderValue = function(view) {
         k;
     html += '<dt><span class="label">Name</span></dt><dd><span><b>' + this.pkg + '</b>::' + this.name + '</span></dd>';
     for (k in this.value) {
+        var rendered = this.value[k].render(view);
         html += '<dt><span class="label label-success">' + k + '</span></dt><dd>'
-                + this.value[k].render(view) + '</dd>';
+                + ( k === 'IO' ? rendered + ' @ ' + this.ioseek : rendered )
+                + '</dd>';
     }
     return html + '</dl>';
 }

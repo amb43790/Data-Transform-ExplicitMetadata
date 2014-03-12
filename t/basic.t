@@ -67,6 +67,7 @@ sub test_filehandle {
             PACKAGE => 'main',
             NAME => '$filehandle',
             IO => fileno($filehandle),
+            IOseek => '0 but true',
             SCALAR => {
                 __value => undef,
                 __reftype => 'SCALAR',
@@ -93,6 +94,7 @@ sub test_filehandle {
             PACKAGE => 'main',
             NAME => 'STDOUT',
             IO => fileno(STDOUT),
+            IOseek => undef,
             SCALAR => {
                 __value => undef,
                 __reftype => 'SCALAR',

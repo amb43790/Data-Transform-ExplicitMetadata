@@ -84,6 +84,7 @@ sub encode {
             }
             if (*{$value}{IO}) {
                 $tmpvalue{IO} = encode(fileno(*{$value}{IO}), &$_p, $seen);
+                $tmpvalue{IOseek} = sysseek($value, 0, 1);
             }
             $value = \%tmpvalue;
         } elsif (($reftype eq 'REGEXP')
@@ -105,7 +106,7 @@ sub encode {
             $value = $copy;
         } elsif ($reftype eq 'REF') {
             $value = encode($$value, &$_p, $seen );
-        } elsif (($reftype eq 'VSTRING') or Scalar::Util::isvstring($$value)) {
+        } elsif (($reftype eq 'VSTRING') or (ref($value) eq 'SCALAR' and Scalar::Util::isvstring($$value))) {
             $reftype = 'VSTRING';
             $value = [ unpack('c*', $$value) ];
         } elsif ($reftype eq 'SCALAR') {
@@ -235,7 +236,7 @@ sub decode {
         }
 
         foreach my $type ( keys %$value ) {
-            next if ($type eq 'NAME' or $type eq 'PACKAGE');
+            next if ($type eq 'NAME' or $type eq 'PACKAGE' or $type eq 'IOseek');
             if ($type eq 'IO') {
                 if (my $fileno = $value->{IO}) {
                     open($rv, '>&=', $fileno)
