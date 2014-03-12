@@ -83,8 +83,9 @@ sub encode {
                 $tmpvalue{CODE} = encode(*{$value}{CODE}, &$_p, $seen);
             }
             if (*{$value}{IO}) {
-                $tmpvalue{IO} = encode(fileno(*{$value}{IO}), &$_p, $seen);
-                $tmpvalue{IOseek} = sysseek($value, 0, 1);
+                if( $tmpvalue{IO} = encode(fileno(*{$value}{IO}), &$_p, $seen) ) {
+                    $tmpvalue{IOseek} = sysseek($value, 0, 1);
+                }
             }
             $value = \%tmpvalue;
         } elsif (($reftype eq 'REGEXP')
