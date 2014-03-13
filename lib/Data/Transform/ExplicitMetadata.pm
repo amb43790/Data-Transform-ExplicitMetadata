@@ -1,4 +1,4 @@
-package Data::Transform::WithMetadata;
+package Data::Transform::ExplicitMetadata;
 
 use strict;
 use warnings;

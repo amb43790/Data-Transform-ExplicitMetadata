@@ -1,4 +1,4 @@
-## Data::Transform::WithMetadata
+## Data::Transform::ExplicitMetadata
 
 Transform a Perl data structure into one with basic data types and
 explicit metadata.  This data structure can be safely JSON encoded.
@@ -20,9 +20,10 @@ created from the JSON string.
 
 ## Usage
 
-    use Data::Transform::WithMetadata;
+    use Data::Transform::ExplicitMetadata;
+    use JSON;
     
-    my $encoded = Data::Transform::WithMetadata::encode($perl_data);
+    my $encoded = Data::Transform::ExplicitMetadata::encode($perl_data);
     my $json_string = JSON::encode_json($encoded);
 
-    my $perl_copy = Data::Transform::WithMetadata::decode($encoded);
+    my $perl_copy = Data::Transform::ExplicitMetadata::decode($encoded);

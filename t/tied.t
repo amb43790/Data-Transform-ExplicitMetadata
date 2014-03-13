@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 
-use Data::Transform::WithMetadata qw(encode decode);
+use Data::Transform::ExplicitMetadata qw(encode decode);
 
 use Scalar::Util qw(refaddr);
 use Test::More tests => 9;
@@ -15,7 +15,7 @@ test_tied_handle();
 sub test_tied_scalar {
     my $original = 'original data';
     my $tied_value = 'tied scalar';
-    tie $original, 'Data::Transform::WithMetadata::TiedScalar', $tied_value;
+    tie $original, 'Data::Transform::ExplicitMetadata::TiedScalar', $tied_value;
     my $expected = {
         __reftype => 'SCALAR',
         __refaddr => refaddr(\$original),
@@ -23,7 +23,7 @@ sub test_tied_scalar {
         __value => {
             __reftype => 'ARRAY',
             __refaddr => refaddr(tied $original),
-            __blessed => 'Data::Transform::WithMetadata::TiedScalar',
+            __blessed => 'Data::Transform::ExplicitMetadata::TiedScalar',
             __value => [ $tied_value ],
         }
     };
@@ -37,7 +37,7 @@ sub test_tied_scalar {
 sub test_tied_array {
     my @original = ( 'an','array');
     my $tied_value = 'haha';
-    tie @original, 'Data::Transform::WithMetadata::TiedArray', $tied_value;
+    tie @original, 'Data::Transform::ExplicitMetadata::TiedArray', $tied_value;
     my $expected = {
         __reftype => 'ARRAY',
         __refaddr => refaddr(\@original),
@@ -45,7 +45,7 @@ sub test_tied_array {
         __value => {
             __reftype => 'SCALAR',
             __refaddr => refaddr(tied @original),
-            __blessed => 'Data::Transform::WithMetadata::TiedArray',
+            __blessed => 'Data::Transform::ExplicitMetadata::TiedArray',
             __value => $tied_value,
         }
     };
@@ -59,7 +59,7 @@ sub test_tied_array {
 sub test_tied_hash {
     my %original = ( one => 1 );
     my $tied_value = 'secret';
-    tie %original, 'Data::Transform::WithMetadata::TiedHash', $tied_value;
+    tie %original, 'Data::Transform::ExplicitMetadata::TiedHash', $tied_value;
     my $expected = {
         __reftype => 'HASH',
         __refaddr => refaddr(\%original),
@@ -67,7 +67,7 @@ sub test_tied_hash {
         __value => {
             __reftype => 'SCALAR',
             __refaddr => refaddr(tied %original),
-            __blessed => 'Data::Transform::WithMetadata::TiedHash',
+            __blessed => 'Data::Transform::ExplicitMetadata::TiedHash',
             __value => $tied_value,
         }
     };
@@ -82,7 +82,7 @@ sub test_tied_handle {
     open(my $original, __FILE__);
     my $tied_value = 'secret';
     my $fileno = fileno($original);
-    tie *$original, 'Data::Transform::WithMetadata::TiedHandle', $tied_value;
+    tie *$original, 'Data::Transform::ExplicitMetadata::TiedHandle', $tied_value;
     my $expected = {
         __reftype => 'GLOB',
         __refaddr => refaddr($original),
@@ -99,7 +99,7 @@ sub test_tied_handle {
         __value => {
             __reftype => 'SCALAR',
             __refaddr => refaddr(tied *$original),
-            __blessed => 'Data::Transform::WithMetadata::TiedHandle',
+            __blessed => 'Data::Transform::ExplicitMetadata::TiedHandle',
             __value => $tied_value,
         }
     };
@@ -111,7 +111,7 @@ sub test_tied_handle {
     is(scalar(<$decoded>), $tied_value, 'decode tied handle');
 }
 
-package Data::Transform::WithMetadata::TiedScalar;
+package Data::Transform::ExplicitMetadata::TiedScalar;
 
 sub TIESCALAR {
     my $class = shift;
@@ -124,7 +124,7 @@ sub FETCH {
     return join(' ', @$self);
 }
 
-package Data::Transform::WithMetadata::TiedArray;
+package Data::Transform::ExplicitMetadata::TiedArray;
 
 sub TIEARRAY {
     my $class = shift;
@@ -141,7 +141,7 @@ sub FETCHSIZE {
     return 100;
 }
 
-package Data::Transform::WithMetadata::TiedHash;
+package Data::Transform::ExplicitMetadata::TiedHash;
 
 sub TIEHASH {
     my $class = shift;
@@ -154,7 +154,7 @@ sub FETCH {
     return $$self;
 }
 
-package Data::Transform::WithMetadata::TiedHandle;
+package Data::Transform::ExplicitMetadata::TiedHandle;
 
 sub TIEHANDLE {
     my $class = shift;

@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 
-use Data::Transform::WithMetadata qw(encode decode);
+use Data::Transform::ExplicitMetadata qw(encode decode);
 
 use Scalar::Util;
 use Test::More tests => 34;
