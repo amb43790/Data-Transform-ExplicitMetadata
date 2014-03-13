@@ -4,7 +4,7 @@ use warnings;
 use Data::Transform::WithMetadata qw(encode decode);
 
 use Scalar::Util qw(refaddr);
-use Test::More tests => 8;
+use Test::More tests => 9;
 use IO::Handle;
 
 test_tied_scalar();
@@ -13,13 +13,13 @@ test_tied_hash();
 test_tied_handle();
 
 sub test_tied_scalar {
-    my $original = 1;
+    my $original = 'original data';
     my $tied_value = 'tied scalar';
     tie $original, 'Data::Transform::WithMetadata::TiedScalar', $tied_value;
     my $expected = {
         __reftype => 'SCALAR',
         __refaddr => refaddr(\$original),
-        __tied => 1,
+        __tied => 'original data',
         __value => {
             __reftype => 'ARRAY',
             __refaddr => refaddr(tied $original),
@@ -41,7 +41,7 @@ sub test_tied_array {
     my $expected = {
         __reftype => 'ARRAY',
         __refaddr => refaddr(\@original),
-        __tied => 1,
+        __tied => [ 'an', 'array' ],
         __value => {
             __reftype => 'SCALAR',
             __refaddr => refaddr(tied @original),
@@ -63,7 +63,7 @@ sub test_tied_hash {
     my $expected = {
         __reftype => 'HASH',
         __refaddr => refaddr(\%original),
-        __tied => 1,
+        __tied => { one => 1 },
         __value => {
             __reftype => 'SCALAR',
             __refaddr => refaddr(tied %original),
@@ -79,14 +79,23 @@ sub test_tied_hash {
 }
 
 sub test_tied_handle {
-    my $original = IO::Handle->new();
+    open(my $original, __FILE__);
     my $tied_value = 'secret';
+    my $fileno = fileno($original);
     tie *$original, 'Data::Transform::WithMetadata::TiedHandle', $tied_value;
     my $expected = {
         __reftype => 'GLOB',
         __refaddr => refaddr($original),
-        __blessed => 'IO::Handle',
-        __tied => 1,
+        __tied => {
+            PACKAGE => 'main',
+            NAME => '$original',
+            SCALAR => {
+                __value => undef,
+                __reftype => 'SCALAR'
+            },
+            IO => $fileno,
+            IOseek => '0 but true',
+        },
         __value => {
             __reftype => 'SCALAR',
             __refaddr => refaddr(tied *$original),
@@ -95,6 +104,7 @@ sub test_tied_handle {
         }
     };
     my $encoded = encode($original);
+    ok(delete($encoded->{__tied}->{SCALAR}->{__refaddr}), 'tied original glob scalar has refaddr');
     is_deeply($encoded, $expected, 'encode tied handle');
 
     my $decoded = decode($encoded);

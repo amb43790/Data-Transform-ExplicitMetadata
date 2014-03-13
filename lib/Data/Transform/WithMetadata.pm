@@ -58,10 +58,12 @@ sub encode {
 
         if (my $tied = _is_tied($value)) {
             local $_ = 'tied';  # &$_p needs this
+            my $original = encode(_untie_and_get_original_value($value), &$_p, $seen);
             my $rv = {  __reftype => $reftype,
                         __refaddr => $refaddr,
-                        __tied    => 1,
+                        __tied    => ref($original) ? $original->{__value} : $original,
                         __value   => encode($tied, &$_p, $seen) };
+            _retie($value, $tied);
             $rv->{__blessed} = $blesstype if $blesstype;
             return $rv;
         }
@@ -132,6 +134,42 @@ sub _is_tied {
     elsif ($reftype eq 'GLOB')   { $tied = tied *$ref }
 
     return $tied;
+}
+
+sub _untie_and_get_original_value {
+    my $ref = shift;
+
+    my $tied_val = _is_tied($ref);
+    my $class = Scalar::Util::blessed($tied_val);
+    my $untie_function = join('::', $class, 'UNTIE');
+    no strict 'refs';
+    local *$untie_function = sub { };
+    use strict 'refs';
+
+    my $reftype = Scalar::Util::reftype($ref);
+    my $original;
+    if (!$reftype) {
+        untie $ref;
+        $original = $ref;
+    } elsif ($reftype eq 'SCALAR') {
+        untie $$ref;
+        $original = $$ref;
+    } elsif ($reftype eq 'ARRAY') {
+        untie @$ref;
+        $original = [ @$ref ];
+    } elsif ($reftype eq 'HASH') {
+        untie %$ref;
+        $original = { %$ref };
+    } elsif ($reftype eq 'GLOB') {
+        untie *$ref;
+        my $pkg = *$ref{PACKAGE};
+        my $name = *$ref{NAME};
+        $original = _create_anon_ref_of_type('GLOB', $pkg, $name);
+        *$original = *$ref;
+    } else {
+        Carp::croak("Cannot retrieve the original value of a tied $reftype");
+    }
+    return $original;
 }
 
 sub _retie {
