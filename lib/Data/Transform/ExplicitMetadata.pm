@@ -384,57 +384,94 @@ sub _validate_decode_structure {
 
 =head1 NAME
 
-Data::Serialize::JSON - Encode Perl values in a json-friendly way
+Data::Transform::ExplicitMetadata - Encode Perl values in a json-friendly way
 
 =head1 SYNOPSIS
 
-  use Data::Serialize::JSON qw(to_json from_json);
+  use Data::Transform::ExplicitMetadata qw(encode decode);
+  use JSON;
 
-  my $val = encode_perl_data($some_data_structure);
+  my $val = encode($some_data_structure);
   $io->print( JSON::encode_json( $val ));
+
+  my $data_structure_copy = decode($val);
 
 =head1 DESCRIPTION
 
-This utility module is used to take an arbitrarily nested data structure, and
-return a value that may be safely JSON-encoded.
+Transforms an arbitrarily nested data structure into an analogous data
+structure composed of only simple scalars, arrayrefs and hashrefs that may
+be safely JSON-encoded, while retaining all the Perl-specific metadata
+about typeglobs, blessed and tied references, self-referential data,
+reference addresses, etc.
+
+With a few exceptions, a copy of the original data structure can be recreated
+from the encoded version.
 
 =head2 Functions
 
 =over 4
 
-=item encode_perl_data
+=item encode
 
 Accepts a single value and returns a value that may be safely passed to
 JSON::encode_json().  encode_json() cannot handle Perl-specific data like
 blessed references or typeglobs.  Non-reference scalar values like numbers
-and strings are returned unchanged.  For all references, encode_perl_data()
+and strings are returned unchanged.  For all references, encode()
 returns a hashref with these keys
-  __reftype     String indicating the type of reference, as returned
-                by Scalar::Util::reftype()
+  __reftype     String indicating the type of reference, as
+                  returned by Scalar::Util::reftype()
   __refaddr     Memory address of the reference, as returned by
-                Scalar::Util::refaddr()
+                  Scalar::Util::refaddr()
   __blessed     Package this reference is blessed into, as returned
-                by Scalar::Util::blessed.
+                  by Scalar::Util::blessed.
   __value       Reference to the unblessed data.
-  __tied        Flag indicating this variable is tied
+  __tied        The original value hidden by the tie() operation.
   __recursive   Flag indicating this reference was seen before
 
-If the reference was not blessed, then the __blessed key will not be present.
+If the reference was not blessed or tied, then the __blessed and/or __tied keys
+will not be present.
+
 __value is generally a copy of the underlying data.  For example, if the input
 value is an hashref, then __value will also be a hashref containing the input
 value's kays and values.  For typeblobs and glob refs, __value will be a
-hashref with the keys SCALAR, ARRAY, HASH, IO and CODE.  For compiled regexps,
-__value will be a 2-element arrayref of the pattern and modifiers.  For coderefs,
-__value will be the stringified reference, like "CODE=(0x12345678)".  For
-v-strings and v-string refs, __value will by an arrayref containing the
-integers making up the v-string.  For tied objects, __tied will be true
-and __value will contain the underlying tied data.
+hashref with the keys NAME, PACKAGE, SCALAR, ARRAY, HASH, IO and CODE.  For
+compiled regexps, __value will be a 2-element arrayref of the pattern and
+modifiers.  For coderefs, __value will be the stringified reference, like
+"CODE=(0x12345678)".  For v-strings and v-string refs, __value will by an
+arrayref containing the integers making up the v-string.
+
+For tied objects, __tied will be contain the original value hidden by tie()
+and __value will contain the tied data.  The original data is retrieved by:
+    * call tied() to get a copy of the tied data
+    * localize the UNTIE method in the appropriate class
+    * untie the variable
+    * save a copy of the original value
+    * localize the appropriate TIE* mythod to return the tied data
+    * call tie() to retie the variable
 
 if __recursive is true, then __value will contain a string representation
 of the first place this reference was seen in the data structure.
 
-encode_perl_data() handles arbitrarily nested data structures, meaning that
+encode() handles arbitrarily nested data structures, meaning that
 values in the __values slot may also be encoded this way.
+
+=item deocde
+
+Accepts a single value and returns a copy of the data structure originally
+passed to encode().  __refaddr information is discarded and new copies of
+nested data structures is created.  Self-referential is re-linked to the
+appropriate placxe in the new copy.  Blessed references are re-bless into
+the original packages.
+
+Tied variables are re-tied by localizing the appropriate TIE* method to return
+the tied data.  The variable's original data is filled in before calling tie().
+
+The IO slot of typeglobs is recreated by opening the handle with the same
+descriptor number and seeking the the position saved in the glob's IOseek
+key.
+
+Coderefs cannot be decoded properly.  They are recreated by returning a
+reference to a dummy sub that returns a message explaning the situation.
 
 =back
 
