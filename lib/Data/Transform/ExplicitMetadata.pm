@@ -467,8 +467,7 @@ Tied variables are re-tied by localizing the appropriate TIE* method to return
 the tied data.  The variable's original data is filled in before calling tie().
 
 The IO slot of typeglobs is recreated by opening the handle with the same
-descriptor number and seeking the the position saved in the glob's IOseek
-key.
+descriptor number.
 
 Coderefs cannot be decoded properly.  They are recreated by returning a
 reference to a dummy sub that returns a message explaning the situation.
