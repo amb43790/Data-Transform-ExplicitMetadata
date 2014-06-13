@@ -4,15 +4,9 @@ use warnings;
 use Data::Transform::ExplicitMetadata qw(encode decode);
 
 use Scalar::Util qw(refaddr);
-use Test::More tests => 11;
+use Test::More tests => 6;
 
-recurse_array();
-recurse_hash();
-recurse_ref1();
-recurse_ref2();
-recurse_glob();
-
-sub recurse_array {
+subtest recurse_array => sub {
     my $idx_2 = [ 2 ];
     push @$idx_2, $idx_2;
     my $original = [ 0, 1, $idx_2 ];
@@ -44,9 +38,9 @@ sub recurse_array {
 
     my $decoded = decode($encoded);
     is_deeply($decoded, $original, 'decode recursive data structure');
-}
+};
 
-sub recurse_hash {
+subtest recurse_hash => sub {
     my $nested = { bar => 'bar' };
     $nested->{nested} = $nested;
     my $original = { foo => 'foo', nested => $nested };
@@ -76,9 +70,9 @@ sub recurse_hash {
 
     my $decoded = decode($encoded);
     is_deeply($decoded, $original, 'decode recursive hash');
-}
+};
 
-sub recurse_ref1 {
+subtest recurse_ref1 => sub {
     my $a = 1;
     my $b = \$a;
     my $original = \$b;
@@ -109,9 +103,9 @@ sub recurse_ref1 {
     is_deeply($decoded, $original, 'decode ref reference');
 
     undef($a); # break the cycle
-}
+};
 
-sub recurse_ref2 {
+subtest recurse_ref2 => sub {
     my $c = 1;
     my $b = \$c;
     $c = \$b;
@@ -143,9 +137,9 @@ sub recurse_ref2 {
     is_deeply($decoded, $original, 'decode ref, circularity not at root');
 
     undef($a);
-}
+};
 
-sub recurse_glob {
+subtest recurse_glob => sub {
     use vars '@typeglob','$typeglob';
 
     @typeglob = (\@typeglob);
@@ -183,4 +177,4 @@ sub recurse_glob {
     is(ref($decoded), 'GLOB', 'decode glob');
     my $decoded_array = *{$decoded}{ARRAY};
     is_deeply($decoded_array, $decoded_array, 'decoded array from glob');
-}
+};
