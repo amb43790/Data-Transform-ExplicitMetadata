@@ -7,6 +7,8 @@ use Scalar::Util;
 use Symbol;
 use Carp;
 
+our $VERSION = "0.02";
+
 use base 'Exporter';
 
 our @EXPORT_OK = qw( encode decode );
@@ -318,7 +320,7 @@ sub decode {
 
     }
 
-    bless $rv, $blessed if ($blessed);
+    bless $rv, $blessed if ($blessed and ! $input->{__recursive});
 
     if ($is_first_invocation) {
         $_->($rv) foreach @$recursive_queue;

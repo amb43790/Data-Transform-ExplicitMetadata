@@ -178,3 +178,33 @@ subtest recurse_glob => sub {
     my $decoded_array = *{$decoded}{ARRAY};
     is_deeply($decoded_array, $decoded_array, 'decoded array from glob');
 };
+
+subtest blessed => sub {
+    my $original = bless [ ], 'BlessedArray';
+    push @$original, (1, $original);
+
+    my $expected = {
+        __refaddr => refaddr($original),
+        __reftype => 'ARRAY',
+        __blessed => 'BlessedArray',
+        __value => [
+            1,
+            {
+                __refaddr => refaddr($original),
+                __reftype => 'ARRAY',
+                __blessed => 'BlessedArray',
+                __recursive => 1,
+                __value => '$VAR',
+            },
+        ],
+    };
+
+    my $encoded = encode($original);
+    is_deeply($encoded, $expected, 'encode recursive with blessed item');
+
+    my $decoded = decode($encoded);
+    is_deeply($decoded, $original, 'decode from encoded');
+
+    isa_ok($decoded, 'BlessedArray', 'decoded blessed properly');
+    isa_ok($decoded->[1], 'BlessedArray', 'recursed decoded blessed properly');
+};
