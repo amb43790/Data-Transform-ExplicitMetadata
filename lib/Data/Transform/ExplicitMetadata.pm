@@ -100,6 +100,8 @@ sub encode {
             my($pattern, $modifiers);
             if ($^V ge v5.9.5) {
                 require re;
+            }
+            if (defined &re::regexp_pattern) {
                 ($pattern, $modifiers) = re::regexp_pattern($value);
             } else {
                 $value = "$value";
