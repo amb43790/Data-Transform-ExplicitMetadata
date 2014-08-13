@@ -1,0 +1,10 @@
+libdata-transform-explicitmetadata-perl (0.02-1) unstable; urgency=low
+  * Compatibility with more platforms and Perl versions
+
+ -- Anthony Brummett <brummett@cpan.org>  Mon, 30 Jun 2014 16:08:14 -0500
+
+libdata-transform-explicitmetadata-perl (0.01-1) unstable; urgency=low
+  * Initial release
+
+ -- Anthony Brummett <brummett@cpan.org> Tue, 24 Jun 2014 19:20:40 -0500
+

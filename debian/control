@@ -1,0 +1,14 @@
+Source: libdata-transform-explicitmetadata-perl
+Section: perl
+Priority: optional
+Build-Depends: debhelper (>= 7)
+Build-Depends-Indep: perl
+Maintainer: Anthony Brummett <brummett@cpan.org>
+Homepage: http://search.cpan.org/~brummett/Data-Transform-ExplicitMetadata-0.020001/lib/Data/Transform/ExplicitMetadata.pm
+Vcs-Git: git://github.com/amb43790/Data-Transform-ExplicitMetadata
+
+Package: libdata-transform-explicitmetadata-perl
+Architecture: all
+Depends: perl
+Description: Transform a Perl data structure into one with basic data types and explicit metadata that can be safely JSON-encoded
+
