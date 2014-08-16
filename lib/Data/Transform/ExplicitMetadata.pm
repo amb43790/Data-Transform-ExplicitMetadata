@@ -507,7 +507,7 @@ values in the __values slot may also be encoded this way.
 
 Accepts a single value and returns a copy of the data structure originally
 passed to encode().  __refaddr information is discarded and new copies of
-nested data structures is created.  Self-referential is re-linked to the
+nested data structures is created.  Self-referential data is re-linked to the
 appropriate placxe in the new copy.  Blessed references are re-bless into
 the original packages.
 
@@ -526,7 +526,7 @@ reference to a dummy sub that returns a message explaning the situation.
 
 =head1 SEE ALSO
 
-L<FileHandle::Fmode>
+L<JSON>, L<Sereal>, L<Data::Dumper>, L<FileHandle::Fmode>
 
 =head1 AUTHOR
 
