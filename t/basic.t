@@ -4,7 +4,8 @@ use warnings;
 use Data::Transform::ExplicitMetadata qw(encode decode);
 
 use Scalar::Util;
-use Test::More tests => 7;
+use File::Temp;
+use Test::More tests => 8;
 
 subtest test_scalar => sub {
     plan tests => 8;
@@ -49,8 +50,11 @@ subtest test_simple_references => sub {
     }
 };
 
-subtest test_filehandle => sub {
+subtest test_filehandle_no_fmode => sub {
     plan tests => 8;
+
+    no warnings 'redefine';
+    local $Data::Transform::ExplicitMetadata::HAS_FMODE = '';
 
     open(my $filehandle, __FILE__) || die "Can't open file: $!";
 
@@ -111,6 +115,25 @@ subtest test_filehandle => sub {
     is(ref(\$decoded), 'GLOB', 'decoded bare filehandle type');
     is(fileno($decoded), fileno(STDOUT), 'decode bare filehandle fileno');
 };
+
+subtest test_filehandle_with_fmode => sub {
+    if (! eval { require FileHandle::Fmode } ) {
+        plan skip_all => 'FileHandle::Fmode is not available';
+    }
+
+    plan tests => 4;
+
+    my $temp_fh = File::Temp->new();
+    $temp_fh->close();
+    my $filename = $temp_fh->filename;
+
+    foreach my $mode (qw( < > >> +<)) {
+        open(my $filehandle, $mode, $filename) || die "Can't open temp file in mode $mode: $!";
+        my $encoded = encode($filehandle);
+        is ($encoded->{__value}->{IOmode}, $mode, "IOMode for mode $mode");
+    }
+};
+
 
 subtest test_coderef => sub {
     plan tests => 2;
