@@ -7,7 +7,7 @@ use Scalar::Util;
 use Symbol;
 use Carp;
 
-our $VERSION = "0.020001";
+our $VERSION = "0.03";
 
 use base 'Exporter';
 
