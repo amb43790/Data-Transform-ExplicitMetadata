@@ -51,13 +51,13 @@ subtest test_simple_references => sub {
 };
 
 subtest test_filehandle_with_fmode => sub {
-    plan tests => 4;
+    plan tests => 5;
 
     my $temp_fh = File::Temp->new();
     $temp_fh->close();
     my $filename = $temp_fh->filename;
 
-    foreach my $mode (qw( < > >> +<)) {
+    foreach my $mode (qw( < > >> +>> +<)) {
         open(my $filehandle, $mode, $filename) || die "Can't open temp file in mode $mode: $!";
         my $encoded = encode($filehandle);
         is ($encoded->{__value}->{IOmode}, $mode, "IOMode for mode $mode");
