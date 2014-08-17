@@ -333,10 +333,10 @@ sub decode {
         $rv = _create_anon_ref_of_type('GLOB', $value->{PACKAGE}, $value->{NAME});
 
         foreach my $type ( keys %$value ) {
-            next if ($type eq 'NAME' or $type eq 'PACKAGE' or $type eq 'IOseek' or $type eq 'IOMode');
+            next if ($type eq 'NAME' or $type eq 'PACKAGE' or $type eq 'IOseek' or $type eq 'IOmode');
             if ($type eq 'IO') {
                 if (my $fileno = $value->{IO}) {
-                    $rv = _recreate_fh($fileno, $value->{IOMode});
+                    $rv = _recreate_fh($fileno, $value->{IOmode});
                 }
             } elsif ($type eq 'CODE') {
                 *{$rv} = \&_dummy_sub unless ($is_real_glob);
