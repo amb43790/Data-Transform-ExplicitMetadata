@@ -1,3 +1,15 @@
+libdata-transform-explicitmetadata-perl (0.04-1) unstable; urgency=low
+    * Use Fcntl to determine fh open mode instead of FileHandle::Fmode
+    * Fix broken tests
+
+ -- Anthony Brummett <brummett@cpan.org>  Sun, 17 Aug 2014 16:08:14 -0500
+
+libdata-transform-explicitmetadata-perl (0.03-1) unstable; urgency=low
+    * Save and restore the open mode of file handles with FileHandle::Fmode
+
+ -- Anthony Brummett <brummett@cpan.org>  Sat, 16 Aug 2014 16:08:14 -0500
+
+
 libdata-transform-explicitmetadata-perl (0.02-1) unstable; urgency=low
   * Compatibility with more platforms and Perl versions
 

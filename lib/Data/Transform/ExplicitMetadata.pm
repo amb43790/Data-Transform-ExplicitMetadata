@@ -6,12 +6,30 @@ use warnings;
 use Scalar::Util;
 use Symbol;
 use Carp;
+use Fcntl qw(F_GETFL O_WRONLY O_RDWR O_APPEND);
 
-our $VERSION = "0.020001";
+our $VERSION = "0.04";
 
 use base 'Exporter';
 
 our @EXPORT_OK = qw( encode decode );
+
+sub _get_open_mode {
+    my $fh = shift;
+
+    my $flags = eval { no warnings 'uninitialized';
+                       fcntl($fh, F_GETFL, my $junk) };
+    return unless $flags;
+
+    my $is_append = $flags & O_APPEND;
+    if ($flags & O_WRONLY) {
+        return $is_append ? '>>' : '>';
+    } elsif ($flags & O_RDWR) {
+        return $is_append ? '+>>' : '+<';
+    } else {
+        return '<';
+    }
+}
 
 sub encode {
     my $value = shift;
@@ -88,6 +106,7 @@ sub encode {
             }
             if (*{$value}{IO}) {
                 if( $tmpvalue{IO} = encode(fileno(*{$value}{IO}), &$_p, $seen) ) {
+                    $tmpvalue{IOmode} = _get_open_mode(*{$value}{IO});
                     $tmpvalue{IOseek} = sysseek($value, 0, 1);
                 }
             }
@@ -235,6 +254,22 @@ sub _create_anon_ref_of_type {
     }
 }
 
+sub _recreate_fh {
+    my($fileno, $mode) = @_;
+
+    my $fh;
+    if ($mode) {
+        open($fh, $mode . '&=', $fileno)
+            || Carp::carp("Couldn't open filehandle for descriptor $fileno with mode $mode: $!");
+
+    } else {
+        open($fh, '>&=', $fileno)
+        || open($fh, '<&=', $fileno)
+        || Carp::carp("Couldn't open filehandle for descriptor $fileno: $!");
+    }
+    return $fh;
+}
+
 sub decode {
     my($input, $recursive_queue, $recurse_fill) = @_;
 
@@ -287,12 +322,10 @@ sub decode {
         $rv = _create_anon_ref_of_type('GLOB', $value->{PACKAGE}, $value->{NAME});
 
         foreach my $type ( keys %$value ) {
-            next if ($type eq 'NAME' or $type eq 'PACKAGE' or $type eq 'IOseek');
+            next if ($type eq 'NAME' or $type eq 'PACKAGE' or $type eq 'IOseek' or $type eq 'IOmode');
             if ($type eq 'IO') {
                 if (my $fileno = $value->{IO}) {
-                    open($rv, '>&=', $fileno)
-                    || open($rv, '<&=', $fileno)
-                    || Carp::carp("Couldn't open filehandle for descriptor $fileno: $!");
+                    $rv = _recreate_fh($fileno, $value->{IOmode});
                 }
             } elsif ($type eq 'CODE') {
                 *{$rv} = \&_dummy_sub unless ($is_real_glob);
@@ -463,7 +496,7 @@ values in the __values slot may also be encoded this way.
 
 Accepts a single value and returns a copy of the data structure originally
 passed to encode().  __refaddr information is discarded and new copies of
-nested data structures is created.  Self-referential is re-linked to the
+nested data structures is created.  Self-referential data is re-linked to the
 appropriate placxe in the new copy.  Blessed references are re-bless into
 the original packages.
 
@@ -471,7 +504,9 @@ Tied variables are re-tied by localizing the appropriate TIE* method to return
 the tied data.  The variable's original data is filled in before calling tie().
 
 The IO slot of typeglobs is recreated by opening the handle with the same
-descriptor number.
+descriptor number.  If the module FileHandle::Fmode is available, it will be
+re-opened in the same mode as the original.  Otherwise, it will first try
+re-opening the file descriptor in read mode, then write mode.
 
 Coderefs cannot be decoded properly.  They are recreated by returning a
 reference to a dummy sub that returns a message explaning the situation.
@@ -480,7 +515,7 @@ reference to a dummy sub that returns a message explaning the situation.
 
 =head1 SEE ALSO
 
-Devel::hdb
+L<JSON>, L<Sereal>, L<Data::Dumper>, L<FileHandle::Fmode>
 
 =head1 AUTHOR
 

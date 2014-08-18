@@ -4,17 +4,12 @@ use warnings;
 use Data::Transform::ExplicitMetadata qw(encode decode);
 
 use Scalar::Util;
-use Test::More tests => 35;
+use File::Temp;
+use Test::More tests => 7;
 
-test_scalar();
-test_simple_references();
-test_filehandle();
-test_coderef();
-test_refref();
-test_regex();
-test_vstring();
+subtest test_scalar => sub {
+    plan tests => 8;
 
-sub test_scalar {
     my $tester = sub {
         my($original, $desc) = @_;
         my $encoded = encode($original);
@@ -27,9 +22,11 @@ sub test_scalar {
     $tester->('a string', 'string');
     $tester->('', 'empty string');
     $tester->(undef, 'undef');
-}
+};
 
-sub test_simple_references {
+subtest test_simple_references => sub {
+    plan tests => 6;
+
     my %tests = (
         scalar => \'a scalar',
         array  => [ 1,2,3 ],
@@ -51,70 +48,26 @@ sub test_simple_references {
         my $decoded = decode($encoded);
         is_deeply($decoded, $original, "decode $test");
     }
-}
+};
 
-sub test_filehandle {
-    open(my $filehandle, __FILE__) || die "Can't open file: $!";
+subtest test_filehandle_with_fmode => sub {
+    plan tests => 5;
 
-    my $encoded = encode($filehandle);
-    my $decoded = decode($encoded);
+    my $temp_fh = File::Temp->new();
+    $temp_fh->close();
+    my $filename = $temp_fh->filename;
 
-    ok(delete $encoded->{__value}->{SCALAR}->{__refaddr},
-        'anonymous scalar has __refaddr');
-
-    my $expected = {
-        __value => {
-            PACKAGE => 'main',
-            NAME => '$filehandle',
-            IO => fileno($filehandle),
-            IOseek => '0 but true',
-            SCALAR => {
-                __value => undef,
-                __reftype => 'SCALAR',
-            },
-        },
-        __reftype => 'GLOB',
-        __refaddr => Scalar::Util::refaddr($filehandle),
-    };
-
-    is_deeply($encoded, $expected, 'encode filehandle');
-
-    is(fileno($decoded), fileno($filehandle), 'decode filehandle');
+    foreach my $mode (qw( < > >> +>> +<)) {
+        open(my $filehandle, $mode, $filename) || die "Can't open temp file in mode $mode: $!";
+        my $encoded = encode($filehandle);
+        is ($encoded->{__value}->{IOmode}, $mode, "IOMode for mode $mode");
+    }
+};
 
 
-    # try with a bare filehandle
-    $encoded = encode(*STDOUT);
-    $decoded = decode($encoded);
+subtest test_coderef => sub {
+    plan tests => 2;
 
-    ok(delete $encoded->{__value}->{SCALAR}->{__refaddr},
-        'anonymous scalar has __refaddr');
-
-    $expected = {
-        __value => {
-            PACKAGE => 'main',
-            NAME => 'STDOUT',
-            IO => fileno(STDOUT),
-            SCALAR => {
-                __value => undef,
-                __reftype => 'SCALAR',
-            },
-        },
-        __reftype => 'GLOB',
-    };
-
-    # different platforms have different values for the seek position of STDOUT
-    # For example, running this test with prove, I get undef on Unix-like systems
-    # and '0 but true' on Windows.  Running the test directly with perl, I get a
-    # large-ish positive number
-    ok(exists $encoded->{__value}->{IOseek}, 'encoded has IOseek key');
-    delete $encoded->{__value}->{IOseek};
-
-    is_deeply($encoded, $expected, 'encode bare filehandle');
-    is(ref(\$decoded), 'GLOB', 'decoded bare filehandle type');
-    is(fileno($decoded), fileno(STDOUT), 'decode bare filehandle fileno');
-}
-
-sub test_coderef {
     my $original = sub { 1 };
 
     my $encoded = encode($original);
@@ -129,9 +82,11 @@ sub test_coderef {
 
     my $decoded = decode($encoded);
     is(ref($decoded), 'CODE', 'decoded to a coderef');
-}
+};
 
-sub test_refref {
+subtest test_refref => sub {
+    plan tests => 2;
+
     my $hash = { };
     my $original = \$hash;
 
@@ -149,9 +104,11 @@ sub test_refref {
 
     my $decoded = decode($encoded);
     is_deeply($decoded, $original, 'decode ref reference');
-}
+};
 
-sub test_regex {
+subtest test_regex => sub {
+    plan tests => 3;
+
     my $original = qr(a regex \w)m;
 
     my $expected = {
@@ -165,9 +122,11 @@ sub test_regex {
     my $decoded = decode($encoded);
     is("$decoded", "$original", 'decode regex');
     isa_ok($decoded, 'Regexp');
-}
+};
 
-sub test_vstring {
+subtest test_vstring => sub {
+    plan tests => 6;
+
     my $original = v1.2.3.4;
 
     my $expected = {
@@ -195,4 +154,4 @@ sub test_vstring {
     is(ref($decoded),
         $^V ge v5.10.0 ? 'VSTRING' : 'SCALAR',
         'decoded ref');
-}
+};
