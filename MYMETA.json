@@ -27,6 +27,9 @@
          }
       },
       "runtime" : {
+         "recommends" : {
+            "FileHandle::Fmode" : "0.14"
+         },
          "requires" : {
             "Carp" : "0",
             "Exporter" : "0",
