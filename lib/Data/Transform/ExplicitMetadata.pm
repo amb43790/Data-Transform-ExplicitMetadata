@@ -492,7 +492,7 @@ of the first place this reference was seen in the data structure.
 encode() handles arbitrarily nested data structures, meaning that
 values in the __values slot may also be encoded this way.
 
-=item deocde
+=item decode
 
 Accepts a single value and returns a copy of the data structure originally
 passed to encode().  __refaddr information is discarded and new copies of
