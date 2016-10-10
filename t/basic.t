@@ -51,6 +51,8 @@ subtest test_simple_references => sub {
 };
 
 subtest test_filehandle => sub {
+    plan skip_all => q(Filehandle open mode tests don't work on Windows)
+        if ($^O =~ m/MSWin/);
     plan tests => 5;
 
     encode_filehandle_test_open_mode();

@@ -106,6 +106,8 @@ sub test_tied_handle {
     };
     my $encoded = encode($original);
     ok(delete($encoded->{__tied}->{SCALAR}->{__refaddr}), 'tied original glob scalar has refaddr');
+
+    delete $encoded->{__tied}->{IOmode} if ($^O =~ m/MSWin/);  # FMode doesn't work on Windows
     is_deeply($encoded, $expected, 'encode tied handle');
 
     my $decoded = decode($encoded);

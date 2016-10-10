@@ -8,7 +8,7 @@ use Symbol;
 use Carp;
 use Fcntl qw(F_GETFL O_WRONLY O_RDWR O_APPEND);
 
-our $VERSION = "0.05";
+our $VERSION = "0.05_01";
 
 use base 'Exporter';
 
@@ -483,20 +483,39 @@ JSON::encode_json().  encode_json() cannot handle Perl-specific data like
 blessed references or typeglobs.  Non-reference scalar values like numbers
 and strings are returned unchanged.  For all references, encode()
 returns a hashref with these keys
-  __reftype     String indicating the type of reference, as
-                  returned by Scalar::Util::reftype()
-  __refaddr     Memory address of the reference, as returned by
-                  Scalar::Util::refaddr()
-  __blessed     Package this reference is blessed into, as returned
-                  by Scalar::Util::blessed.
-  __value       Reference to the unblessed data.
-  __tied        The original value hidden by the tie() operation.
-  __recursive   Flag indicating this reference was seen before
+
+=over 4
+
+=item * __reftype
+
+String indicating the type of reference, as returned by Scalar::Util::reftype()
+
+=item * __refaddr
+
+Memory address of the reference, as returned by Scalar::Util::refaddr()
+
+=item * __blessed
+
+Package this reference is blessed into, as returned by Scalar::Util::blessed.
+
+=item * __value
+
+Reference to the unblessed data.
+
+=item * __tied
+
+The original value hidden by the tie() operation.
+
+=item * __recursive
+
+Flag indicating this reference was seen before
+
+=back
 
 If the reference was not blessed or tied, then the __blessed and/or __tied keys
 will not be present.
 
-__value is generally a copy of the underlying data.  For example, if the input
+C<__value> is generally a copy of the underlying data.  For example, if the input
 value is an hashref, then __value will also be a hashref containing the input
 value's kays and values.  For typeblobs and glob refs, __value will be a
 hashref with the keys NAME, PACKAGE, SCALAR, ARRAY, HASH, IO and CODE.  For
@@ -505,16 +524,38 @@ modifiers.  For coderefs, __value will be the stringified reference, like
 "CODE=(0x12345678)".  For v-strings and v-string refs, __value will by an
 arrayref containing the integers making up the v-string.
 
-For tied objects, __tied will be contain the original value hidden by tie()
+For tied objects, C<__tied> will be contain the original value hidden by tie()
 and __value will contain the tied data.  The original data is retrieved by:
-    * call tied() to get a copy of the tied data
-    * localize the UNTIE method in the appropriate class
-    * untie the variable
-    * save a copy of the original value
-    * localize the appropriate TIE* mythod to return the tied data
-    * call tie() to retie the variable
 
-if __recursive is true, then __value will contain a string representation
+=over 4
+
+=item *
+
+call tied() to get a copy of the tied data
+
+=item *
+
+localize the UNTIE method in the appropriate class
+
+=item *
+
+untie the variable
+
+=item *
+
+save a copy of the original value
+
+=item *
+
+localize the appropriate TIE* mythod to return the tied data
+
+=item *
+
+call tie() to retie the variable
+
+=back
+
+if C<__recursive> is true, then __value will contain a string representation
 of the first place this reference was seen in the data structure.
 
 encode() handles arbitrarily nested data structures, meaning that
@@ -552,5 +593,5 @@ Anthony Brummett <brummett@cpan.org>
 
 =head1 COPYRIGHT
 
-Copyright 2014, Anthony Brummett.  This module is free software. It may
+Copyright 2016, Anthony Brummett.  This module is free software. It may
 be used, redistributed and/or modified under the same terms as Perl itself.

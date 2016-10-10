@@ -109,8 +109,12 @@ sub test_nested_struct {
     delete $encoded->{__value}{array}{__value}[3]{__value}{IOseek};
 
     my $open_mode = delete $encoded->{__value}{array}{__value}[3]{__value}{IOmode};
-    ok(($open_mode eq '>') || ($open_mode eq '+<'),
-        'IO slot open mode');
+
+    SKIP: {
+        skip(q(Filehandle open mode tests don't work on Windows), 1) if ($^O =~ m/MSWin/);
+        ok(($open_mode eq '>') || ($open_mode eq '+<'),
+            'IO slot open mode');
+    };
 
     is_deeply($encoded, $expected, 'encode nested data structure');
 
