@@ -1,3 +1,6 @@
+23 Mar 2017 - v0.07
+    * Encoding non-ref GLOBs is working, which means it can encode a stash
+
 21 Oct 2016 - v0.06
     * Fix broken tests on Windows
 
