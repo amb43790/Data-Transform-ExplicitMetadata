@@ -65,15 +65,17 @@ sub encode {
     my $seen = shift;
 
     if (!ref($value)) {
-        my $ref = ref(\$value);
+        my $ref_to_value = \$value;
+        my $ref = ref($ref_to_value);
         my $encoded_value = $value;
         # perl 5.8 - ref() with a vstring returns SCALAR
         if ($ref eq 'GLOB'
             or
             $ref eq 'VSTRING' or Scalar::Util::isvstring($value)
         ) {
-            $encoded_value = encode(\$value, $path_expr, $seen);
+            $encoded_value = encode($ref_to_value, $path_expr, $seen);
             delete $encoded_value->{__refaddr};
+            delete $seen->{$ref_to_value};
         }
         return $encoded_value;
     }
