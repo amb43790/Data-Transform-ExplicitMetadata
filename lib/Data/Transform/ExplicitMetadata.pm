@@ -65,113 +65,117 @@ sub encode {
     my $seen = shift;
 
     if (!ref($value)) {
-        my $ref = ref(\$value);
+        my $ref_to_value = \$value;
+        my $ref = ref($ref_to_value);
+        my $encoded_value = $value;
         # perl 5.8 - ref() with a vstring returns SCALAR
         if ($ref eq 'GLOB'
             or
             $ref eq 'VSTRING' or Scalar::Util::isvstring($value)
         ) {
-            $value = encode(\$value, $path_expr, $seen);
-            delete $value->{__refaddr};
+            $encoded_value = encode($ref_to_value, $path_expr, $seen);
+            delete $encoded_value->{__refaddr};
+            delete $seen->{$ref_to_value};
         }
-        return $value;
+        return $encoded_value;
     }
 
     $path_expr ||= '$VAR';
     $seen ||= {};
 
-    if (ref $value) {
-        my $reftype     = Scalar::Util::reftype($value);
-        my $refaddr     = Scalar::Util::refaddr($value);
-        my $blesstype   = Scalar::Util::blessed($value);
+    my $reftype     = Scalar::Util::reftype($value);
+    my $refaddr     = Scalar::Util::refaddr($value);
+    my $blesstype   = Scalar::Util::blessed($value);
 
-        if ($seen->{$value}) {
-            my $rv = {  __reftype => $reftype,
-                        __refaddr => $refaddr,
-                        __recursive => 1,
-                        __value => $seen->{$value} };
-            $rv->{__blessed} = $blesstype if $blesstype;
-            return $rv;
-        }
-        $seen->{$value} = $path_expr;
+    my $encoded_value;
 
-        # Build a new path string for recursive calls
-        my $_p = sub {
-            return join('', '${', $path_expr, '}') if ($reftype eq 'SCALAR' or $reftype eq 'REF');
-            return join('', '*{', $path_expr, '}') if ($reftype eq 'GLOB');
+    if ($seen->{$value}) {
+        $encoded_value = {  __reftype => $reftype,
+                            __refaddr => $refaddr,
+                            __recursive => 1,
+                            __value => $seen->{$value} };
+        $encoded_value->{__blessed} = $blesstype if $blesstype;
+        return $encoded_value;
+    }
+    $seen->{$value} = $path_expr;
 
-            my @bracket = $reftype eq 'ARRAY' ? ( '[', ']' ) : ( '{', '}' );
-            return sprintf('%s->%s%s%s', $path_expr, $bracket[0], $_, $bracket[1]);
-        };
+    # Build a new path string for recursive calls
+    my $_p = sub {
+        return join('', '${', $path_expr, '}') if ($reftype eq 'SCALAR' or $reftype eq 'REF');
+        return join('', '*{', $path_expr, '}') if ($reftype eq 'GLOB');
 
-        if (my $tied = _is_tied($value)) {
-            local $_ = 'tied';  # &$_p needs this
-            my $original = encode(_untie_and_get_original_value($value), &$_p, $seen);
-            my $rv = {  __reftype => $reftype,
-                        __refaddr => $refaddr,
-                        __tied    => ref($original) ? $original->{__value} : $original,
-                        __value   => encode($tied, &$_p, $seen) };
-            _retie($value, $tied);
-            $rv->{__blessed} = $blesstype if $blesstype;
-            return $rv;
-        }
+        my @bracket = $reftype eq 'ARRAY' ? ( '[', ']' ) : ( '{', '}' );
+        return sprintf('%s->%s%s%s', $path_expr, $bracket[0], $_, $bracket[1]);
+    };
 
-        if ($reftype eq 'HASH') {
-            $value = { map { $_ => encode($value->{$_}, &$_p, $seen) } sort(keys %$value) };
-
-        } elsif ($reftype eq 'ARRAY') {
-            $value = [ map { encode($value->[$_], &$_p, $seen) } (0 .. $#$value) ];
-
-        } elsif ($reftype eq 'GLOB') {
-            my %tmpvalue = map { $_ => encode(*{$value}{$_},
-                                            &$_p."{$_}",
-                                            $seen) }
-                           grep { *{$value}{$_} }
-                           qw(HASH ARRAY SCALAR);
-            @tmpvalue{'NAME','PACKAGE'} = (*{$value}{NAME}, *{$value}{PACKAGE});
-            if (*{$value}{CODE}) {
-                $tmpvalue{CODE} = encode(*{$value}{CODE}, &$_p, $seen);
-            }
-            if (*{$value}{IO}) {
-                if( $tmpvalue{IO} = encode(fileno(*{$value}{IO}), &$_p, $seen) ) {
-                    $tmpvalue{IOmode} = _get_open_mode(*{$value}{IO});
-                    $tmpvalue{IOseek} = sysseek($value, 0, 1);
-                }
-            }
-            $value = \%tmpvalue;
-        } elsif (($reftype eq 'REGEXP')
-                    or ($reftype eq 'SCALAR' and defined($blesstype) and $blesstype eq 'Regexp')
-        ) {
-            $reftype = 'REGEXP';
-            undef($blesstype) unless $blesstype ne 'Regexp';
-            my($pattern, $modifiers);
-            if ($^V ge v5.9.5) {
-                require re;
-            }
-            if (defined &re::regexp_pattern) {
-                ($pattern, $modifiers) = re::regexp_pattern($value);
-            } else {
-                $value = "$value";
-                ($modifiers, $pattern) = $value =~ m/\(\?(\w*)-\w*:(.*)\)$/;
-            }
-            $value = [ $pattern, $modifiers ];
-        } elsif ($reftype eq 'CODE') {
-            (my $copy = $value.'') =~ s/^(\w+)\=//;  # Hack to change CodeClass=CODE(0x123) to CODE=(0x123)
-            $value = $copy;
-        } elsif ($reftype eq 'REF') {
-            $value = encode($$value, &$_p, $seen );
-        } elsif (($reftype eq 'VSTRING') or (ref($value) eq 'SCALAR' and Scalar::Util::isvstring($$value))) {
-            $reftype = 'VSTRING';
-            $value = [ unpack('c*', $$value) ];
-        } elsif ($reftype eq 'SCALAR') {
-            $value = encode($$value, &$_p, $seen);
-        }
-
-        $value = { __reftype => $reftype, __refaddr => $refaddr, __value => $value };
-        $value->{__blessed} = $blesstype if $blesstype;
+    if (my $tied = _is_tied($value)) {
+        local $_ = 'tied';  # &$_p needs this
+        my $original = encode(_untie_and_get_original_value($value), &$_p, $seen);
+        $encoded_value = {  __reftype => $reftype,
+                            __refaddr => $refaddr,
+                            __tied    => ref($original) ? $original->{__value} : $original,
+                            __value   => encode($tied, &$_p, $seen) };
+        _retie($value, $tied);
+        $encoded_value->{__blessed} = $blesstype if $blesstype;
+        return $encoded_value;
     }
 
-    return $value;
+    if ($reftype eq 'HASH') {
+        $encoded_value = { map { $_ => encode($value->{$_}, &$_p, $seen) } sort(keys %$value) };
+
+    } elsif ($reftype eq 'ARRAY') {
+        $encoded_value = [ map { encode($value->[$_], &$_p, $seen) } (0 .. $#$value) ];
+
+    } elsif ($reftype eq 'GLOB') {
+        my %encoded_value = map { $_ => encode(*{$value}{$_},
+                                                &$_p."{$_}",
+                                                $seen) }
+                            grep { *{$value}{$_} }
+                            qw(HASH ARRAY SCALAR);
+        @encoded_value{'NAME','PACKAGE'} = (*{$value}{NAME}, *{$value}{PACKAGE});
+        if (*{$value}{CODE}) {
+            $encoded_value{CODE} = encode(*{$value}{CODE}, &$_p, $seen);
+        }
+        if (*{$value}{IO}) {
+            if ( $encoded_value{IO} = encode(fileno(*{$value}{IO}), &$_p, $seen) )
+            {
+                $encoded_value{IOmode} = _get_open_mode(*{$value}{IO});
+                $encoded_value{IOseek} = sysseek($value, 0, 1);
+            }
+        }
+        $encoded_value = \%encoded_value;
+    } elsif (($reftype eq 'REGEXP')
+                or ($reftype eq 'SCALAR' and defined($blesstype) and $blesstype eq 'Regexp')
+    ) {
+        $reftype = 'REGEXP';
+        undef($blesstype) unless $blesstype ne 'Regexp';
+        my($pattern, $modifiers);
+        if ($^V ge v5.9.5) {
+            require re;
+        }
+        if (defined &re::regexp_pattern) {
+            ($pattern, $modifiers) = re::regexp_pattern($value);
+        } else {
+            my $value_as_str = "$value";
+            ($modifiers, $pattern) = $value_as_str =~ m/\(\?(\w*)-\w*:(.*)\)$/;
+        }
+        $encoded_value = [ $pattern, $modifiers ];
+    } elsif ($reftype eq 'CODE') {
+        (my $copy = $value.'') =~ s/^(\w+)\=//;  # Hack to change CodeClass=CODE(0x123) to CODE=(0x123)
+        $encoded_value = $copy;
+    } elsif ($reftype eq 'REF') {
+        $encoded_value = encode($$value, &$_p, $seen );
+    } elsif (($reftype eq 'VSTRING') or (ref($value) eq 'SCALAR' and Scalar::Util::isvstring($$value))) {
+        $reftype = 'VSTRING';
+        $encoded_value = [ unpack('c*', $$value) ];
+    } elsif ($reftype eq 'SCALAR') {
+        $encoded_value = encode($$value, &$_p, $seen);
+    }
+
+    $encoded_value = { __reftype => $reftype, __refaddr => $refaddr, __value => $encoded_value };
+    $encoded_value->{__blessed} = $blesstype if $blesstype;
+
+    return $encoded_value;
 }
 
 sub _is_tied {
