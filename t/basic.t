@@ -55,6 +55,10 @@ subtest test_filehandle => sub {
         if ($^O =~ m/MSWin/);
     plan tests => 5;
 
+    encode_filehandle_test_open_mode();
+};
+
+sub encode_filehandle_test_open_mode {
     my $temp_fh = File::Temp->new();
     $temp_fh->close();
     my $filename = $temp_fh->filename;
@@ -64,7 +68,7 @@ subtest test_filehandle => sub {
         my $encoded = encode($filehandle);
         is ($encoded->{__value}->{IOmode}, $mode, "IOMode for mode $mode");
     }
-};
+}
 
 subtest test_filehandle_with_fmode => sub {
     if (eval { require FileHandle::Fmode }) {
