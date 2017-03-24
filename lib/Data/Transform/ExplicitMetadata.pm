@@ -8,7 +8,7 @@ use Symbol;
 use Carp;
 use Fcntl qw(F_GETFL O_WRONLY O_RDWR O_APPEND);
 
-our $VERSION = "0.07";
+our $VERSION = "0.08";
 
 use base 'Exporter';
 
