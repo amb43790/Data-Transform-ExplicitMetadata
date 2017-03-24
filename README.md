@@ -1,3 +1,4 @@
+[![Build Status](https://travis-ci.org/brummett/Data-Transform-ExplicitMetadata.png?branch=master)](https://travis-ci.org/brummett/Data-Transform-ExplicitMetadata)
 ## Data::Transform::ExplicitMetadata
 
 Transform a Perl data structure into one with basic data types and
