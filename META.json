@@ -42,7 +42,7 @@
    "provides" : {
       "Data::Transform::ExplicitMetadata" : {
          "file" : "lib/Data/Transform/ExplicitMetadata.pm",
-         "version" : "0.07"
+         "version" : "0.08"
       }
    },
    "release_status" : "stable",
@@ -51,5 +51,5 @@
          "http://dev.perl.org/licenses/"
       ]
    },
-   "version" : "0.07"
+   "version" : "0.08"
 }
