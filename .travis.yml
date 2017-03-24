@@ -17,4 +17,4 @@ env:
   - INSTALL_FMODE=false
 
 install:
-  - if [ $INSTALL_FMODE -eq 'true' ]; cpanm FileHandle::Fmode; fi
+  - if [ $INSTALL_FMODE == 'true' ]; then cpanm FileHandle::Fmode; fi
