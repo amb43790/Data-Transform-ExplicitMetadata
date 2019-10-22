@@ -66,6 +66,7 @@ sub encode {
 
     if (!ref($value)) {
         my $ref_to_value = \$value;
+        my $refaddr     = Scalar::Util::refaddr($ref_to_value);
         my $ref = ref($ref_to_value);
         my $encoded_value = $value;
         # perl 5.8 - ref() with a vstring returns SCALAR
@@ -75,7 +76,7 @@ sub encode {
         ) {
             $encoded_value = encode($ref_to_value, $path_expr, $seen);
             delete $encoded_value->{__refaddr};
-            delete $seen->{$ref_to_value};
+            delete $seen->{$refaddr};
         }
         return $encoded_value;
     }
@@ -89,15 +90,15 @@ sub encode {
 
     my $encoded_value;
 
-    if ($seen->{$value}) {
+    if ($seen->{$refaddr}) {
         $encoded_value = {  __reftype => $reftype,
                             __refaddr => $refaddr,
                             __recursive => 1,
-                            __value => $seen->{$value} };
+                            __value => $seen->{$refaddr} };
         $encoded_value->{__blessed} = $blesstype if $blesstype;
         return $encoded_value;
     }
-    $seen->{$value} = $path_expr;
+    $seen->{$refaddr} = $path_expr;
 
     # Build a new path string for recursive calls
     my $_p = sub {
