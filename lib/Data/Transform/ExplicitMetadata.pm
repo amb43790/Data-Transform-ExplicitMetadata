@@ -171,6 +171,13 @@ sub encode {
         $encoded_value = [ unpack('c*', $$value) ];
     } elsif ($reftype eq 'SCALAR') {
         $encoded_value = encode($$value, &$_p, $seen);
+
+    } elsif ($reftype eq 'IO') {
+        if ( $encoded_value->{IO} = encode(fileno($value), &$_p, $seen) )
+        {
+            $encoded_value->{IOmode} = _get_open_mode(*$value);
+            $encoded_value->{IOseek} = sysseek($value, 0, 1);
+        }
     }
 
     $encoded_value = { __reftype => $reftype, __refaddr => $refaddr, __value => $encoded_value };
@@ -287,15 +294,17 @@ sub _create_anon_ref_of_type {
     }
 }
 
+# $fh can be undef, in which case it's autovivified.  But for handles that
+# were originally created via Synbol::geniosym, it'll be passed in already
+# created
 sub _recreate_fh {
-    my($fileno, $mode) = @_;
+    my($fileno, $mode, $fh) = @_;
 
-    my $fh;
     if ($mode) {
         open($fh, $mode . '&=', $fileno)
             || Carp::carp("Couldn't open filehandle for descriptor $fileno with mode $mode: $!");
 
-    } else {
+    } elsif ($fileno) {
         open($fh, '>&=', $fileno)
         || open($fh, '<&=', $fileno)
         || Carp::carp("Couldn't open filehandle for descriptor $fileno: $!");
@@ -386,6 +395,10 @@ sub decode {
         my $vstring = eval 'v' . join('.', @$value);
         $rv = $refaddr ? \$vstring : $vstring;
 
+    } elsif ($reftype eq 'IO') {
+        # A filehandle that was created via Symbol::geniosym
+        my $fh = Symbol::geniosym;
+        $rv = _recreate_fh($value->{IO}, $value->{IOmode}, $fh);
     }
 
     bless $rv, $blessed if ($blessed and ! $input->{__recursive});
@@ -436,6 +449,8 @@ sub _validate_decode_structure {
                 ( $reftype eq 'REGEXP' and ref($value) eq 'ARRAY' )
                 or
                 ( $reftype eq 'VSTRING' and ref($value) eq 'ARRAY' )
+                or
+                ( $reftype eq 'IO' and exists($value->{IO}) )
                 or
                 ( $reftype and ! ref($input->{__value}) and $input->{__recursive} )
                 or
